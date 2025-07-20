@@ -3,7 +3,7 @@
 An automated ESP8266 programming system with 3D printer integration for mass production of TS1 sensors.
 
 ## 🎯 Overview
-a
+
 The TS1 Sensor Programmer is a comprehensive solution for automating the programming of ESP8266-based sensors. It combines:
 
 - **Automated Serial Number Management** via n8n webhooks
@@ -42,6 +42,105 @@ The TS1 Sensor Programmer is a comprehensive solution for automating the program
 - Arduino CLI installed and configured
 - ESP8266 board support installed
 - 3D printer with G-code support (optional)
+
+## 🍓 Raspberry Pi Deployment
+
+### Perfect for Production Use!
+
+The TS1 Sensor Programmer is **optimized for Raspberry Pi deployment** with:
+- **Touch-friendly interface** designed for 7-inch screens
+- **Low resource usage** - runs smoothly on Pi 3B+ or Pi 4
+- **Headless operation** - can run without monitor
+- **Auto-start capability** - boots directly to programming interface
+
+### Hardware Requirements
+- **Raspberry Pi 3B+ or Pi 4** (2GB RAM minimum, 4GB recommended)
+- **7-inch touch screen** (optional but recommended)
+- **USB connections** for ESP8266 and 3D printer
+- **Power supply** (3A recommended for stable operation)
+
+### Quick Pi Setup
+
+1. **Flash Raspberry Pi OS** (Raspberry Pi OS Lite recommended for headless)
+2. **Enable SSH and configure network**
+3. **Install Node.js 18+**:
+   ```bash
+   curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+   sudo apt-get install -y nodejs
+   ```
+
+4. **Install Arduino CLI**:
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+   sudo mv bin/arduino-cli /usr/local/bin/
+   arduino-cli core update-index
+   arduino-cli core install esp8266:esp8266
+   ```
+
+5. **Clone and setup**:
+   ```bash
+   git clone https://github.com/thermalsystemsltd/Programmer.git
+   cd Programmer
+   npm install
+   cp config.example.json config.json
+   # Edit config.json with your settings
+   ```
+
+6. **Start the server**:
+   ```bash
+   npm start
+   ```
+
+7. **Access via browser**:
+   - Local: `http://localhost:3000`
+   - Network: `http://[PI_IP_ADDRESS]:3000`
+
+### Auto-Start Setup (Optional)
+
+Create a systemd service for auto-start:
+
+```bash
+sudo nano /etc/systemd/system/ts1-programmer.service
+```
+
+Add this content:
+```ini
+[Unit]
+Description=TS1 Sensor Programmer
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/Programmer
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start:
+```bash
+sudo systemctl enable ts1-programmer
+sudo systemctl start ts1-programmer
+```
+
+### Pi-Specific Configuration
+
+**For headless operation**, add to `config.json`:
+```json
+{
+  "PI_MODE": true,
+  "AUTO_START": true,
+  "TOUCH_SCREEN": true
+}
+```
+
+**For network access**, the Pi will be available at:
+- `http://[PI_IP_ADDRESS]:3000`
+- Find IP with: `hostname -I`
 
 ### Installation
 

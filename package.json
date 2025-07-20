@@ -5,7 +5,11 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "pi-setup": "echo 'Setting up for Raspberry Pi...' && npm install && cp config.example.json config.json && echo 'Configuration copied. Please edit config.json with your settings.'",
+    "pi-service": "echo 'Creating systemd service...' && sudo systemctl enable ts1-programmer && sudo systemctl start ts1-programmer && echo 'Service enabled and started!'",
+    "pi-status": "sudo systemctl status ts1-programmer",
+    "pi-logs": "sudo journalctl -u ts1-programmer -f"
   },
   "keywords": [
     "ts1",
