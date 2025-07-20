@@ -153,13 +153,15 @@ const CONFIG_FILE = 'config.json';
 
 // Default configuration
 const DEFAULT_CONFIG = {
-    ARDUINO_SKETCH_PATH: 'C:\\Users\\adamp\\Documents\\Arduino\\LoraTX NEW PCB 12-F VERSION\\SENSOR V105 PCB INA226\\SENSOR\\mock_sketch.ino',
+    ARDUINO_SKETCH_PATH: process.platform === 'win32' 
+        ? 'C:\\Users\\adamp\\Documents\\Arduino\\LoraTX NEW PCB 12-F VERSION\\SENSOR V105 PCB INA226\\SENSOR\\mock_sketch.ino'
+        : '/home/pi/Arduino/TS1_Sensor/TS1_Sensor.ino',
     WEBHOOK_URL: 'https://n8n.ts1cloud.com/webhook/9121d50c-cccf-4e74-a168-8bbbefb3d79a',
     SUCCESS_WEBHOOK_URL: 'https://n8n.ts1cloud.com/webhook-test/565e375e-ab87-4851-bfb2-57037a5a944d',
     SERIAL_LINE_NUMBER: 137,
-    COM_PORT: 'COM5',
+    COM_PORT: process.platform === 'win32' ? 'COM5' : '/dev/ttyUSB0',
     BAUD_RATE: '115200',
-    PRINTER_COM_PORT: 'COM6',
+    PRINTER_COM_PORT: process.platform === 'win32' ? 'COM6' : '/dev/ttyUSB1',
     PRINTER_BAUD_RATE: '115200',
     PCB_GRID_X: 30,  // mm between PCBs horizontally
     PCB_GRID_Y: 110, // mm between PCBs vertically
@@ -1058,72 +1060,135 @@ app.get('/api/printer/status', async (req, res) => {
 app.get('/api/connected-devices', async (req, res) => {
     try {
         const devices = [];
+        const isWindows = process.platform === 'win32';
         
-        // Method 1: Using WMI to get serial ports
-        const wmiCommand = 'wmic path Win32_SerialPort get DeviceID,Description,Name /format:csv';
-        const wmiResult = await new Promise((resolve, reject) => {
-            exec(wmiCommand, (error, stdout, stderr) => {
-                if (error) {
-                    reject(new Error(`WMI command failed: ${error.message}`));
-                    return;
-                }
-                resolve(stdout);
-            });
-        });
-        
-        // Parse WMI results
-        const lines = wmiResult.split('\n').filter(line => line.trim() && !line.includes('Node,DeviceID,Description,Name'));
-        lines.forEach(line => {
-            const parts = line.split(',');
-            if (parts.length >= 4) {
-                const deviceId = parts[1]?.trim();
-                const description = parts[2]?.trim();
-                const name = parts[3]?.trim();
-                
-                if (deviceId && deviceId.startsWith('COM')) {
-                    devices.push({
-                        port: deviceId,
-                        description: description || 'Unknown Device',
-                        name: name || description || 'Unknown Device',
-                        type: getDeviceType(description || name || '')
-                    });
-                }
-            }
-        });
-        
-        // Method 2: Using Registry as backup
-        if (devices.length === 0) {
-            const registryCommand = 'reg query "HKLM\\HARDWARE\\DEVICEMAP\\SERIALCOMM" /v /f "*"';
-            const registryResult = await new Promise((resolve, reject) => {
-                exec(registryCommand, (error, stdout, stderr) => {
+        if (isWindows) {
+            // Windows: Using WMI to get serial ports
+            const wmiCommand = 'wmic path Win32_SerialPort get DeviceID,Description,Name /format:csv';
+            const wmiResult = await new Promise((resolve, reject) => {
+                exec(wmiCommand, (error, stdout, stderr) => {
                     if (error) {
-                        resolve(''); // Don't fail, just return empty
+                        reject(new Error(`WMI command failed: ${error.message}`));
                         return;
                     }
                     resolve(stdout);
                 });
             });
             
-            const registryLines = registryResult.split('\n').filter(line => line.includes('COM'));
-            registryLines.forEach(line => {
-                const match = line.match(/COM\d+/);
-                if (match) {
-                    devices.push({
-                        port: match[0],
-                        description: 'Serial Device (Registry)',
-                        name: match[0],
-                        type: 'unknown'
-                    });
+            // Parse WMI results
+            const lines = wmiResult.split('\n').filter(line => line.trim() && !line.includes('Node,DeviceID,Description,Name'));
+            lines.forEach(line => {
+                const parts = line.split(',');
+                if (parts.length >= 4) {
+                    const deviceId = parts[1]?.trim();
+                    const description = parts[2]?.trim();
+                    const name = parts[3]?.trim();
+                    
+                    if (deviceId && deviceId.startsWith('COM')) {
+                        devices.push({
+                            port: deviceId,
+                            description: description || 'Unknown Device',
+                            name: name || description || 'Unknown Device',
+                            type: getDeviceType(description || name || '')
+                        });
+                    }
                 }
             });
+            
+            // Method 2: Using Registry as backup
+            if (devices.length === 0) {
+                const registryCommand = 'reg query "HKLM\\HARDWARE\\DEVICEMAP\\SERIALCOMM" /v /f "*"';
+                const registryResult = await new Promise((resolve, reject) => {
+                    exec(registryCommand, (error, stdout, stderr) => {
+                        if (error) {
+                            resolve(''); // Don't fail, just return empty
+                            return;
+                        }
+                        resolve(stdout);
+                    });
+                });
+                
+                const registryLines = registryResult.split('\n').filter(line => line.includes('COM'));
+                registryLines.forEach(line => {
+                    const match = line.match(/COM\d+/);
+                    if (match) {
+                        devices.push({
+                            port: match[0],
+                            description: 'Serial Device (Registry)',
+                            name: match[0],
+                            type: 'unknown'
+                        });
+                    }
+                });
+            }
+            
+            // Sort devices by port number
+            devices.sort((a, b) => {
+                const aNum = parseInt(a.port.replace('COM', ''));
+                const bNum = parseInt(b.port.replace('COM', ''));
+                return aNum - bNum;
+            });
+        } else {
+            // Linux: Using ls and lsusb to get serial ports
+            try {
+                const lsResult = await new Promise((resolve, reject) => {
+                    exec('ls -la /dev/tty* | grep -E "(USB|ACM)"', (error, stdout, stderr) => {
+                        if (error) {
+                            resolve(''); // Don't fail, just return empty
+                            return;
+                        }
+                        resolve(stdout);
+                    });
+                });
+                
+                const lsLines = lsResult.split('\n').filter(line => line.trim());
+                lsLines.forEach(line => {
+                    const match = line.match(/\/dev\/tty\w+/);
+                    if (match) {
+                        const port = match[0];
+                        devices.push({
+                            port: port,
+                            description: `USB Serial Device (${port})`,
+                            name: port,
+                            type: 'serial'
+                        });
+                    }
+                });
+                
+                // Get additional USB info
+                try {
+                    const usbResult = await new Promise((resolve, reject) => {
+                        exec('lsusb', (error, stdout, stderr) => {
+                            if (error) {
+                                resolve('');
+                                return;
+                            }
+                            resolve(stdout);
+                        });
+                    });
+                    
+                    const usbLines = usbResult.split('\n').filter(line => line.trim());
+                    usbLines.forEach((usbLine, index) => {
+                        if (devices[index]) {
+                            devices[index].description = usbLine.trim();
+                            devices[index].type = getDeviceType(usbLine.toLowerCase());
+                        }
+                    });
+                } catch (usbError) {
+                    // USB info failed, continue with basic device list
+                }
+                
+                // Sort devices by port name
+                devices.sort((a, b) => a.port.localeCompare(b.port));
+            } catch (lsError) {
+                // If ls command fails, provide some default devices
+                devices.push(
+                    { port: '/dev/ttyUSB0', description: 'USB Serial Device 0', name: '/dev/ttyUSB0', type: 'serial' },
+                    { port: '/dev/ttyUSB1', description: 'USB Serial Device 1', name: '/dev/ttyUSB1', type: 'serial' },
+                    { port: '/dev/ttyACM0', description: 'ACM Serial Device 0', name: '/dev/ttyACM0', type: 'serial' }
+                );
+            }
         }
-        
-        // Sort devices by port number
-        devices.sort((a, b) => {
-            const aNum = parseInt(a.port.replace('COM', ''));
-            const bNum = parseInt(b.port.replace('COM', ''));
-            return aNum - bNum;
-        });
         
         res.json({
             success: true,
