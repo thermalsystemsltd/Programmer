@@ -1,0 +1,18 @@
+{
+  "ARDUINO_SKETCH_PATH": "C:\\Users\\username\\Documents\\Arduino\\TS1_Sensor\\TS1_Sensor.ino",
+  "WEBHOOK_URL": "https://n8n.ts1cloud.com/webhook/your-webhook-id",
+  "SUCCESS_WEBHOOK_URL": "https://n8n.ts1cloud.com/webhook/success-notification",
+  "SERIAL_LINE_NUMBER": 137,
+  "COM_PORT": "COM5",
+  "BAUD_RATE": "115200",
+  "PRINTER_COM_PORT": "COM6",
+  "PRINTER_BAUD_RATE": "115200",
+  "PCB_GRID_X": 30,
+  "PCB_GRID_Y": 110,
+  "PCB_ROWS": 2,
+  "PCB_COLS": 5,
+  "PCB_START_X": 0,
+  "PCB_START_Y": 0,
+  "PCB_Z_UP": 10,
+  "PCB_Z_DOWN": 0
+} 

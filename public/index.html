@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+    <title>TS1 Sensor Programmer</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 10px;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+            height: calc(100vh - 20px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 15px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .status-bar {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+            border-left: 4px solid #28a745;
+        }
+
+        .status-bar h3 {
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-size: 1rem;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 3px 0;
+            font-size: 0.8rem;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .control-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+
+        .control-card:active {
+            border-color: #667eea;
+            transform: scale(0.98);
+            box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+        }
+
+        .control-card h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1rem;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            width: 100%;
+            margin: 8px 0;
+            min-height: 50px;
+            touch-action: manipulation;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #e83e8c 100%);
+        }
+        
+        .btn-control {
+            background: linear-gradient(135deg, #6c757d, #5a6268);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        
+        .btn-control:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .btn-control:active {
+            transform: translateY(0);
+        }
+        
+        .btn-sm {
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            min-height: auto;
+        }
+
+        .serial-display {
+            background: #2c3e50;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 1.2rem;
+            text-align: center;
+            border: 2px solid #34495e;
+        }
+
+        .log-container {
+            background: #1e1e1e;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            padding: 15px;
+            border-radius: 8px;
+            height: 200px;
+            overflow-y: auto;
+            margin-top: 15px;
+            border: 2px solid #333;
+            font-size: 0.85rem;
+        }
+
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-radius: 4px;
+        }
+
+        .log-success {
+            color: #28a745;
+        }
+
+        .log-error {
+            color: #dc3545;
+        }
+
+        .log-info {
+            color: #17a2b8;
+        }
+
+        .log-progress {
+            color: #6f42c1;
+        }
+
+        .log-warning {
+            color: #ffc107;
+        }
+
+        .log-big-success {
+            color: #28a745;
+            font-size: 1.1rem;
+            font-weight: bold;
+            text-align: center;
+            padding: 8px;
+            margin: 8px 0;
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            border-radius: 8px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* Touch-friendly improvements */
+        input, select, textarea {
+            font-size: 16px; /* Prevents zoom on iOS */
+            padding: 12px;
+            border-radius: 8px;
+            border: 2px solid #ddd;
+            width: 100%;
+            margin: 5px 0;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        /* Compact form layout */
+        .form-group {
+            margin-bottom: 10px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .header p {
+                font-size: 0.8rem;
+            }
+            
+            .content {
+                padding: 10px;
+            }
+            
+            .btn {
+                font-size: 0.9rem;
+                padding: 12px 16px;
+                min-height: 45px;
+            }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e9ecef;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .control-card .configuration-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-microchip"></i> TS1 Sensor Programmer</h1>
+            <p>Automated ESP8266 Sensor Programming Interface</p>
+        </div>
+
+        <div class="content">
+            <!-- Configuration Panel -->
+            <div class="control-card" style="margin-bottom: 20px;">
+                <h3 style="cursor: pointer;" onclick="toggleConfig()">
+                    <i class="fas fa-cog"></i> Configuration 
+                    <span id="configStatus" style="font-size: 0.8rem; color: #28a745; margin-left: 10px;">(Saved)</span>
+                    <i class="fas fa-chevron-down" id="configArrow" style="float: right; transition: transform 0.3s ease;"></i>
+                </h3>
+                <div id="configContent" style="display: none;">
+                    <div class="configuration-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div>
+                            <label for="configComPort" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">Device COM Port:</label>
+                            <div style="display: flex; gap: 10px; align-items: end;">
+                                <select id="configComPort" style="flex: 1; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px;">
+                                    <option value="">Loading devices...</option>
+                                </select>
+                                <button type="button" onclick="refreshDevices()" style="padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                                    <i class="fas fa-sync-alt"></i> Refresh
+                                </button>
+                            </div>
+                            <div id="deviceList" style="margin-top: 10px; font-size: 0.9rem; color: #666;"></div>
+                        </div>
+                        <div>
+                            <label for="configBaudRate" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">Device Baud Rate:</label>
+                            <select id="configBaudRate" style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px;">
+                                <option value="9600">9600</option>
+                                <option value="19200">19200</option>
+                                <option value="38400">38400</option>
+                                <option value="57600">57600</option>
+                                <option value="115200" selected>115200</option>
+                                <option value="230400">230400</option>
+                                <option value="460800">460800</option>
+                                <option value="921600">921600</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="configuration-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div>
+                            <label for="configPrinterComPort" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">3D Printer COM Port:</label>
+                            <select id="configPrinterComPort" style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px;">
+                                <option value="COM6">COM6</option>
+                                <option value="COM7">COM7</option>
+                                <option value="COM8">COM8</option>
+                                <option value="COM9">COM9</option>
+                                <option value="COM10">COM10</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="configPrinterBaudRate" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">Printer Baud Rate:</label>
+                            <select id="configPrinterBaudRate" style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px;">
+                                <option value="9600">9600</option>
+                                <option value="19200">19200</option>
+                                <option value="38400">38400</option>
+                                <option value="57600">57600</option>
+                                <option value="115200" selected>115200</option>
+                                <option value="230400">230400</option>
+                                <option value="460800">460800</option>
+                                <option value="921600">921600</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="configuration-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div>
+                            <label for="configPcbGridX" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">PCB X Spacing (mm):</label>
+                            <input type="number" id="configPcbGridX" value="30" style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px;">
+                        </div>
+                        <div>
+                            <label for="configPcbGridY" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">PCB Y Spacing (mm):</label>
+                            <input type="number" id="configPcbGridY" value="110" style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px;">
+                        </div>
+                        <div>
+                            <label for="configPcbRows" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">PCB Rows:</label>
+                            <input type="number" id="configPcbRows" value="2" style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px;">
+                        </div>
+                        <div>
+                            <label for="configPcbCols" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">PCB Columns:</label>
+                            <input type="number" id="configPcbCols" value="5" style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px;">
+                        </div>
+                    </div>
+                    
+                    <div class="configuration-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div>
+                            <label for="configPcbStartX" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">First PCB X (mm):</label>
+                            <input type="number" id="configPcbStartX" value="0" style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px;">
+                        </div>
+                        <div>
+                            <label for="configPcbStartY" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">First PCB Y (mm):</label>
+                            <input type="number" id="configPcbStartY" value="0" style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px;">
+                        </div>
+                        <div>
+                            <label for="configPcbZUp" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">Z Safe Height (mm):</label>
+                            <input type="number" id="configPcbZUp" value="10" style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px;">
+                        </div>
+                        <div>
+                            <label for="configPcbZDown" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">Z Programming Height (mm):</label>
+                            <input type="number" id="configPcbZDown" value="0" style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px;">
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; align-items: end;">
+                        <button class="btn btn-success" onclick="saveConfig()" id="saveConfigBtn" style="width: 100%;">
+                            <i class="fas fa-save"></i> Save Configuration
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls">
+                <!-- Full Process -->
+                <div class="control-card">
+                    <h3><i class="fas fa-rocket"></i> Full Process</h3>
+                    <p>Complete automation: fetch serial, update file, and program device</p>
+                    <button class="btn btn-danger" onclick="fullProcess()" id="fullProcessBtn" style="font-size: 1.2rem; padding: 20px;">
+                        <i class="fas fa-rocket"></i> START FULL PROCESS
+                    </button>
+                </div>
+                
+                <!-- Grid Programming -->
+                <div class="control-card">
+                    <h3><i class="fas fa-th"></i> Grid Programming</h3>
+                    <p>Automated programming of multiple PCBs using 3D printer positioning</p>
+                    <button class="btn btn-warning" onclick="startGridProgramming()" id="gridProgramBtn" style="font-size: 1.2rem; padding: 20px;">
+                        <i class="fas fa-th"></i> START GRID PROGRAMMING
+                    </button>
+                </div>
+                
+                <!-- Manual Printer Controls -->
+                <div class="control-card">
+                    <h3><i class="fas fa-gamepad"></i> Manual Printer Controls</h3>
+                    <p>Manual control of 3D printer movement</p>
+                    
+                    <!-- Connection Status -->
+                    <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px;">
+                        <strong>Printer Status:</strong> <span id="printerStatus">Disconnected</span>
+                        <button class="btn btn-sm" onclick="connectPrinter()" id="connectPrinterBtn" style="margin-left: 10px;">
+                            <i class="fas fa-plug"></i> Connect
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="disconnectPrinter()" id="disconnectPrinterBtn" style="margin-left: 5px; display: none;">
+                            <i class="fas fa-times"></i> Disconnect
+                        </button>
+                    </div>
+                    
+                    <!-- Movement Controls -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                        <div style="text-align: center;">
+                            <button class="btn btn-control" onclick="movePrinter('Y', 10)" style="width: 100%; padding: 15px; font-size: 1.2rem;">
+                                <i class="fas fa-arrow-up"></i><br>Y+10
+                            </button>
+                        </div>
+                        <div style="text-align: center;">
+                            <button class="btn btn-control" onclick="movePrinter('Z', 5)" style="width: 100%; padding: 15px; font-size: 1.2rem;">
+                                <i class="fas fa-arrow-up"></i><br>Z+5
+                            </button>
+                        </div>
+                        <div style="text-align: center;">
+                            <button class="btn btn-control" onclick="movePrinter('Z', -5)" style="width: 100%; padding: 15px; font-size: 1.2rem;">
+                                <i class="fas fa-arrow-down"></i><br>Z-5
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                        <div style="text-align: center;">
+                            <button class="btn btn-control" onclick="movePrinter('X', -10)" style="width: 100%; padding: 15px; font-size: 1.2rem;">
+                                <i class="fas fa-arrow-left"></i><br>X-10
+                            </button>
+                        </div>
+                        <div style="text-align: center;">
+                            <button class="btn btn-control" onclick="homePrinter()" style="width: 100%; padding: 15px; font-size: 1.2rem; background: #17a2b8;">
+                                <i class="fas fa-home"></i><br>HOME
+                            </button>
+                        </div>
+                        <div style="text-align: center;">
+                            <button class="btn btn-control" onclick="movePrinter('X', 10)" style="width: 100%; padding: 15px; font-size: 1.2rem;">
+                                <i class="fas fa-arrow-right"></i><br>X+10
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                        <div style="text-align: center;">
+                            <button class="btn btn-control" onclick="movePrinter('Y', -10)" style="width: 100%; padding: 15px; font-size: 1.2rem;">
+                                <i class="fas fa-arrow-down"></i><br>Y-10
+                            </button>
+                        </div>
+                        <div style="text-align: center;">
+                            <button class="btn btn-control" onclick="movePrinter('Z', 1)" style="width: 100%; padding: 15px; font-size: 1.2rem;">
+                                <i class="fas fa-arrow-up"></i><br>Z+1
+                            </button>
+                        </div>
+                        <div style="text-align: center;">
+                            <button class="btn btn-control" onclick="movePrinter('Z', -1)" style="width: 100%; padding: 15px; font-size: 1.2rem;">
+                                <i class="fas fa-arrow-down"></i><br>Z-1
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Current Position Display -->
+                    <div style="background: #e9ecef; padding: 10px; border-radius: 8px; text-align: center; margin-bottom: 15px;">
+                        <strong>Current Position:</strong><br>
+                        X: <span id="currentX">0</span> | Y: <span id="currentY">0</span> | Z: <span id="currentZ">0</span>
+                        <button class="btn btn-sm" onclick="updatePosition()" style="margin-left: 10px;">
+                            <i class="fas fa-sync-alt"></i> Update
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Log Output -->
+            <div class="control-card">
+                <h3><i class="fas fa-terminal"></i> Log Output</h3>
+                <div class="log-container" id="logContainer">
+                    <div class="log-entry log-info">System initialized. Ready to start.</div>
+                </div>
+                <button class="btn" onclick="clearLog()" style="margin-top: 10px;">
+                    <i class="fas fa-trash"></i> Clear Log
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let isProcessing = false;
+        let eventSource = null;
+
+        // Connect to SSE for real-time logs
+        function connectToLogs() {
+            if (eventSource) {
+                eventSource.close();
+            }
+            
+            eventSource = new EventSource('/api/logs');
+            
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                addLog(data.message, data.type);
+            };
+            
+            eventSource.onerror = function(error) {
+                console.error('SSE connection error:', error);
+                addLog('Real-time log connection lost. Reconnecting...', 'warning');
+                setTimeout(connectToLogs, 5000);
+            };
+        }
+
+        // Initialize the interface
+        document.addEventListener('DOMContentLoaded', function() {
+            connectToLogs();
+            loadConfiguration();
+            loadConnectedDevices();
+        });
+
+        // Check server status
+        async function checkServerStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                document.getElementById('serverStatus').innerHTML = 
+                    '<span style="color: #28a745;"><i class="fas fa-check-circle"></i> Running</span>';
+                document.getElementById('arduinoPath').textContent = data.arduinoPath;
+                document.getElementById('webhookUrl').textContent = data.webhookUrl;
+                document.getElementById('serialLineNumber').textContent = data.serialLineNumber;
+                document.getElementById('comPort').textContent = data.comPort;
+                document.getElementById('baudRate').textContent = data.baudRate;
+                
+                addLog('Server status: Connected', 'success');
+            } catch (error) {
+                document.getElementById('serverStatus').innerHTML = 
+                    '<span style="color: #dc3545;"><i class="fas fa-times-circle"></i> Error</span>';
+                addLog('Server status: Connection failed', 'error');
+            }
+        }
+
+        // Load configuration
+        async function loadConfiguration() {
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                
+                document.getElementById('configComPort').value = config.COM_PORT;
+                document.getElementById('configBaudRate').value = config.BAUD_RATE;
+                document.getElementById('configPrinterComPort').value = config.PRINTER_COM_PORT;
+                document.getElementById('configPrinterBaudRate').value = config.PRINTER_BAUD_RATE;
+                document.getElementById('configPcbGridX').value = config.PCB_GRID_X;
+                document.getElementById('configPcbGridY').value = config.PCB_GRID_Y;
+                document.getElementById('configPcbRows').value = config.PCB_ROWS;
+                document.getElementById('configPcbCols').value = config.PCB_COLS;
+                document.getElementById('configPcbStartX').value = config.PCB_START_X;
+                document.getElementById('configPcbStartY').value = config.PCB_START_Y;
+                document.getElementById('configPcbZUp').value = config.PCB_Z_UP;
+                document.getElementById('configPcbZDown').value = config.PCB_Z_DOWN;
+                
+                // Update status to show configuration is loaded
+                document.getElementById('configStatus').textContent = '(Loaded)';
+                document.getElementById('configStatus').style.color = '#28a745';
+                
+                addLog('Configuration loaded', 'success');
+            } catch (error) {
+                document.getElementById('configStatus').textContent = '(Error)';
+                document.getElementById('configStatus').style.color = '#dc3545';
+                addLog('Failed to load configuration', 'error');
+            }
+        }
+
+        // Toggle configuration panel
+        function toggleConfig() {
+            const content = document.getElementById('configContent');
+            const arrow = document.getElementById('configArrow');
+            
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                arrow.style.transform = 'rotate(180deg)';
+            } else {
+                content.style.display = 'none';
+                arrow.style.transform = 'rotate(0deg)';
+            }
+        }
+
+        // Save configuration
+        async function saveConfig() {
+            const comPort = document.getElementById('configComPort').value;
+            const baudRate = document.getElementById('configBaudRate').value;
+            const printerComPort = document.getElementById('configPrinterComPort').value;
+            const printerBaudRate = document.getElementById('configPrinterBaudRate').value;
+            const pcbGridX = document.getElementById('configPcbGridX').value;
+            const pcbGridY = document.getElementById('configPcbGridY').value;
+            const pcbRows = document.getElementById('configPcbRows').value;
+            const pcbCols = document.getElementById('configPcbCols').value;
+            const pcbStartX = document.getElementById('configPcbStartX').value;
+            const pcbStartY = document.getElementById('configPcbStartY').value;
+            const pcbZUp = document.getElementById('configPcbZUp').value;
+            const pcbZDown = document.getElementById('configPcbZDown').value;
+            
+            if (!comPort) {
+                addLog('Please select a COM port', 'error');
+                return;
+            }
+            
+            setButtonLoading('saveConfigBtn', true);
+            addLog('Saving configuration...', 'info');
+            
+            try {
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        comPort,
+                        baudRate,
+                        printerComPort,
+                        printerBaudRate,
+                        pcbGridX,
+                        pcbGridY,
+                        pcbRows,
+                        pcbCols,
+                        pcbStartX,
+                        pcbStartY,
+                        pcbZUp,
+                        pcbZDown
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    addLog('Configuration saved successfully!', 'success');
+                    
+                    // Update status and collapse panel
+                    document.getElementById('configStatus').textContent = '(Saved)';
+                    document.getElementById('configStatus').style.color = '#28a745';
+                    
+                    // Collapse the configuration panel after a short delay
+                    setTimeout(() => {
+                        toggleConfig();
+                    }, 1000);
+                    
+                } else {
+                    addLog(`Configuration save failed: ${data.error}`, 'error');
+                    document.getElementById('configStatus').textContent = '(Error)';
+                    document.getElementById('configStatus').style.color = '#dc3545';
+                }
+            } catch (error) {
+                addLog(`Network error: ${error.message}`, 'error');
+                document.getElementById('configStatus').textContent = '(Error)';
+                document.getElementById('configStatus').style.color = '#dc3545';
+            } finally {
+                setButtonLoading('saveConfigBtn', false);
+            }
+        }
+
+
+
+        // Full process
+        async function fullProcess() {
+            if (isProcessing) return;
+            
+            isProcessing = true;
+            setButtonLoading('fullProcessBtn', true);
+            addLog('Starting full process...', 'info');
+            
+            try {
+                // Step 1: Fetch serial number via server proxy
+                const webhookUrl = 'https://n8n.ts1cloud.com/webhook/9121d50c-cccf-4e74-a168-8bbbefb3d79a';
+                
+                addLog(`Fetching serial number from: ${webhookUrl}`, 'info');
+                
+                const response = await fetch(`/api/proxy-webhook?url=${encodeURIComponent(webhookUrl)}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                if (!result.success) {
+                    throw new Error(result.error);
+                }
+                
+                const data = result.data;
+                addLog(`Raw response: ${JSON.stringify(data)}`, 'info');
+                
+                // Extract serial number from n8n response format
+                const nextSerial = data.nextSerial || data.lastSerial || data.serial || data.data || data.value || data.number;
+                
+                if (!nextSerial) {
+                    throw new Error('No serial number found in response. Available fields: ' + Object.keys(data).join(', '));
+                }
+                
+                // Calculate the previous serial number
+                const lastSerial = (parseInt(nextSerial) - 1).toString();
+                
+                addLog(`Last serial: ${lastSerial}`, 'success');
+                addLog(`Next serial: ${nextSerial}`, 'success');
+                
+                // Step 2: Update Arduino file via server
+                addLog('Updating Arduino file with new serial number...', 'info');
+                const updateResponse = await fetch('/api/update-serial', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ serialNumber: nextSerial })
+                });
+                
+                const updateData = await updateResponse.json();
+                if (!updateData.success) {
+                    throw new Error(`Update failed: ${updateData.error}`);
+                }
+                
+                addLog('Arduino file updated successfully', 'success');
+                
+                // Step 3: Program device
+                addLog('Programming TS1 Sensor...', 'info');
+                const programResponse = await fetch('/api/program-device', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        serialNumber: nextSerial
+                    })
+                });
+                
+                const programData = await programResponse.json();
+                if (!programData.success) {
+                    throw new Error(`Programming failed: ${programData.error}`);
+                }
+                
+                addLog('TS1 Sensor programmed successfully!', 'success');
+                if (programData.output) {
+                    addLog('Upload details:', 'info');
+                    addLog(programData.output, 'info');
+                }
+                
+            } catch (error) {
+                addLog(`Process failed: ${error.message}`, 'error');
+            } finally {
+                addLog('Stopping full process...', 'info');
+                isProcessing = false;
+                setButtonLoading('fullProcessBtn', false);
+                addLog('Full process button reset complete', 'info');
+            }
+        }
+
+        // Grid Programming
+        async function startGridProgramming() {
+            if (isProcessing) return;
+            
+            isProcessing = true;
+            setButtonLoading('gridProgramBtn', true);
+            addLog('Starting grid programming process...', 'info');
+            
+            try {
+                const response = await fetch('/api/printer/grid-program', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    addLog('Grid programming started successfully!', 'success');
+                    addLog('The system will now program multiple PCBs automatically.', 'info');
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                addLog(`Grid programming failed: ${error.message}`, 'error');
+            } finally {
+                isProcessing = false;
+                setButtonLoading('gridProgramBtn', false);
+            }
+        }
+
+        // Manual Printer Controls
+        async function connectPrinter() {
+            try {
+                setButtonLoading('connectPrinterBtn', true);
+                addLog('Connecting to 3D printer...', 'info');
+                
+                const response = await fetch('/api/printer/connect', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('printerStatus').textContent = 'Connected';
+                    document.getElementById('printerStatus').style.color = '#28a745';
+                    document.getElementById('connectPrinterBtn').style.display = 'none';
+                    document.getElementById('disconnectPrinterBtn').style.display = 'inline-block';
+                    addLog('3D printer connected successfully!', 'success');
+                    updatePosition();
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                addLog(`Printer connection failed: ${error.message}`, 'error');
+            } finally {
+                setButtonLoading('connectPrinterBtn', false);
+            }
+        }
+
+        async function disconnectPrinter() {
+            try {
+                addLog('Disconnecting from 3D printer...', 'info');
+                
+                const response = await fetch('/api/printer/disconnect', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('printerStatus').textContent = 'Disconnected';
+                    document.getElementById('printerStatus').style.color = '#dc3545';
+                    document.getElementById('connectPrinterBtn').style.display = 'inline-block';
+                    document.getElementById('disconnectPrinterBtn').style.display = 'none';
+                    addLog('3D printer disconnected successfully!', 'success');
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                addLog(`Printer disconnection failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function homePrinter() {
+            try {
+                addLog('Homing 3D printer...', 'info');
+                
+                const response = await fetch('/api/printer/home', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    addLog('3D printer homed successfully!', 'success');
+                    updatePosition();
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                addLog(`Printer homing failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function movePrinter(axis, distance) {
+            try {
+                addLog(`Moving printer ${axis} by ${distance}mm...`, 'info');
+                
+                const response = await fetch('/api/printer/move', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        axis: axis,
+                        distance: distance
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    addLog(`Printer moved ${axis} by ${distance}mm successfully!`, 'success');
+                    updatePosition();
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                addLog(`Printer movement failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function updatePosition() {
+            try {
+                const response = await fetch('/api/printer/status');
+                const data = await response.json();
+                
+                if (data.success && data.connected) {
+                    document.getElementById('currentX').textContent = data.position.x.toFixed(1);
+                    document.getElementById('currentY').textContent = data.position.y.toFixed(1);
+                    document.getElementById('currentZ').textContent = data.position.z.toFixed(1);
+                }
+            } catch (error) {
+                console.error('Failed to update position:', error);
+            }
+        }
+
+        // Test Arduino CLI
+        async function testArduinoCLI() {
+            if (isProcessing) return;
+            
+            isProcessing = true;
+            setButtonLoading('testArduinoCLIBtn', true);
+            addLog('Testing Arduino CLI...', 'info');
+            
+            try {
+                const response = await fetch('/api/test-arduino-cli', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error(data.error);
+                }
+                
+                addLog('Arduino CLI test results:', 'success');
+                addLog(`Version: ${data.version}`, 'info');
+                addLog(`Cores: ${data.cores}`, 'info');
+                addLog(`Boards: ${data.boards}`, 'info');
+                
+            } catch (error) {
+                addLog(`Arduino CLI test failed: ${error.message}`, 'error');
+            } finally {
+                isProcessing = false;
+                setButtonLoading('testArduinoCLIBtn', false);
+            }
+        }
+
+        // Load connected devices
+        async function loadConnectedDevices() {
+            try {
+                const response = await fetch('/api/connected-devices');
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error);
+                }
+                
+                updateDeviceDropdown(data.devices);
+                updateDeviceList(data.devices);
+                
+            } catch (error) {
+                addLog(`Failed to load devices: ${error.message}`, 'error');
+                // Fallback to static options
+                updateDeviceDropdown([]);
+            }
+        }
+
+        // Refresh connected devices
+        async function refreshDevices() {
+            addLog('Refreshing connected devices...', 'info');
+            await loadConnectedDevices();
+            addLog('Device list refreshed', 'success');
+        }
+
+        // Update device dropdown
+        function updateDeviceDropdown(devices) {
+            const select = document.getElementById('configComPort');
+            const currentValue = select.value;
+            
+            // Clear existing options
+            select.innerHTML = '';
+            
+            if (devices.length === 0) {
+                select.innerHTML = '<option value="">No devices found</option>';
+                return;
+            }
+            
+            // Add devices with type indicators
+            devices.forEach(device => {
+                const option = document.createElement('option');
+                option.value = device.port;
+                option.textContent = `${device.port} - ${device.description}`;
+                
+                // Highlight ESP8266 devices
+                if (device.type === 'esp8266') {
+                    option.style.fontWeight = 'bold';
+                    option.style.color = '#28a745';
+                }
+                
+                select.appendChild(option);
+            });
+            
+            // Restore previous selection if it still exists
+            if (currentValue && devices.some(d => d.port === currentValue)) {
+                select.value = currentValue;
+            } else if (devices.length > 0) {
+                // Auto-select first ESP8266 device, or first device
+                const esp8266Device = devices.find(d => d.type === 'esp8266');
+                select.value = esp8266Device ? esp8266Device.port : devices[0].port;
+            }
+        }
+
+        // Update device list display
+        function updateDeviceList(devices) {
+            const deviceList = document.getElementById('deviceList');
+            
+            if (devices.length === 0) {
+                deviceList.innerHTML = '<em>No devices detected</em>';
+                return;
+            }
+            
+            let html = '<strong>Connected Devices:</strong><br>';
+            devices.forEach(device => {
+                const typeIcon = getDeviceTypeIcon(device.type);
+                const typeColor = getDeviceTypeColor(device.type);
+                html += `<div style="margin: 2px 0; padding: 2px 0;">
+                    <span style="color: ${typeColor};">${typeIcon}</span>
+                    <strong>${device.port}</strong> - ${device.description}
+                </div>`;
+            });
+            
+            deviceList.innerHTML = html;
+        }
+
+        // Get device type icon
+        function getDeviceTypeIcon(type) {
+            switch (type) {
+                case 'esp8266': return '🔧';
+                case 'arduino': return '📟';
+                case 'bluetooth': return '📱';
+                case 'serial': return '🔌';
+                default: return '❓';
+            }
+        }
+
+        // Get device type color
+        function getDeviceTypeColor(type) {
+            switch (type) {
+                case 'esp8266': return '#28a745';
+                case 'arduino': return '#007bff';
+                case 'bluetooth': return '#6f42c1';
+                case 'serial': return '#ffc107';
+                default: return '#6c757d';
+            }
+        }
+
+
+
+        // Utility functions
+        function setButtonLoading(buttonId, loading) {
+            const button = document.getElementById(buttonId);
+            
+            if (loading) {
+                // Store original text if not already stored
+                if (!button.dataset.originalText) {
+                    button.dataset.originalText = button.innerHTML;
+                }
+                button.innerHTML = '<span class="loading"></span>Processing...';
+                button.disabled = true;
+            } else {
+                // Restore original text
+                const originalText = button.dataset.originalText || button.innerHTML;
+                button.innerHTML = originalText;
+                button.disabled = false;
+            }
+        }
+
+        function addLog(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('logContainer').innerHTML = 
+                '<div class="log-entry log-info">Log cleared.</div>';
+        }
+    </script>
+</body>
+</html> 

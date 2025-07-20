@@ -1,0 +1,9 @@
+@echo off
+echo Downloading Arduino CLI...
+powershell -Command "Invoke-WebRequest -Uri 'https://downloads.arduino.cc/arduino-cli/arduino-cli_latest_Windows_64bit.zip' -OutFile 'arduino-cli.zip'"
+echo Extracting...
+powershell -Command "Expand-Archive -Path 'arduino-cli.zip' -DestinationPath '.' -Force"
+echo Cleaning up...
+del arduino-cli.zip
+echo Done!
+pause 
