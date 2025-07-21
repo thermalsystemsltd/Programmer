@@ -1,7 +1,8 @@
 const { exec } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
-function programESP8266WithArduinoIDE() {
+function programESP8266WithArduinoIDE(currentConfig) {
     return new Promise((resolve, reject) => {
         const sketchPath = currentConfig.ARDUINO_SKETCH_PATH;
         const arduinoIDEPath = 'C:\\Program Files (x86)\\Arduino\\arduino_debug.exe'; // Adjust path as needed

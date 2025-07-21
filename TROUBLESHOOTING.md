@@ -1,5 +1,56 @@
 # 🔧 TS1 Sensor Programmer Troubleshooting Guide
 
+## Problem: "path" is not defined: undefined when connecting to 3D printer
+
+### ✅ What We've Fixed:
+1. **SerialPort Version Issue**: Updated from serialport v12.0.0 to v11.0.0 for better compatibility
+2. **Import Error Handling**: Added try-catch around SerialPort import to prevent crashes
+3. **Constructor Fix**: Updated SerialPort constructor to use object syntax: `{ path: comPort, baudRate: baudRate }`
+
+### 🔍 Solution Steps:
+
+#### 1. **Run the Fix Script (Recommended)**
+```bash
+chmod +x fix_serialport.sh
+./fix_serialport.sh
+```
+
+#### 2. **Manual Fix**
+If the script doesn't work, run these commands manually:
+```bash
+# Stop the service
+sudo systemctl stop ts1-programmer
+
+# Remove problematic serialport
+npm uninstall serialport
+
+# Install stable version
+npm install serialport@^11.0.0
+
+# Clear cache and reinstall
+npm cache clean --force
+rm -rf node_modules package-lock.json
+npm install
+
+# Restart service
+sudo systemctl start ts1-programmer
+```
+
+#### 3. **Verify the Fix**
+Check the logs to confirm the fix worked:
+```bash
+sudo journalctl -u ts1-programmer -f
+```
+
+You should see: `🔌 3D Printer connected on [COM_PORT]` instead of the path error.
+
+### 🚨 Why This Happens:
+- SerialPort v12.0.0 has compatibility issues on Raspberry Pi
+- The library tries to access a `path` variable that's undefined in certain environments
+- Version 11.0.0 is more stable and widely compatible
+
+---
+
 ## Problem: Programming fails silently without debug information
 
 ### ✅ What We've Fixed:

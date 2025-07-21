@@ -5,7 +5,21 @@ const fs = require('fs');
 const https = require('https');
 const { exec } = require('child_process');
 const path = require('path');
-const { SerialPort } = require('serialport');
+
+// Import SerialPort with better compatibility
+let SerialPort;
+try {
+    // Try the newer import first
+    SerialPort = require('serialport').SerialPort;
+} catch (error) {
+    try {
+        // Fallback to older import method
+        SerialPort = require('serialport');
+    } catch (fallbackError) {
+        console.warn('SerialPort import failed, 3D printer functionality will be disabled:', fallbackError.message);
+        SerialPort = null;
+    }
+}
 
 // 3D Printer Control
 class PrinterController {
@@ -20,11 +34,25 @@ class PrinterController {
         return new Promise((resolve, reject) => {
             try {
                 // Check if SerialPort is available
-                if (typeof SerialPort === 'undefined') {
-                    throw new Error('SerialPort library not available. Please run: npm install serialport');
+                if (!SerialPort) {
+                    throw new Error('SerialPort library not available. Please run: npm install serialport@^11.0.0');
                 }
                 
-                this.port = new SerialPort(comPort, { baudRate: parseInt(baudRate) });
+                // Try different constructor syntaxes for compatibility
+                let port;
+                try {
+                    // Try new syntax first (SerialPort v12+)
+                    port = new SerialPort({ path: comPort, baudRate: parseInt(baudRate) });
+                } catch (constructorError) {
+                    try {
+                        // Fallback to old syntax (SerialPort v11 and below)
+                        port = new SerialPort(comPort, { baudRate: parseInt(baudRate) });
+                    } catch (fallbackError) {
+                        throw new Error(`Failed to create SerialPort: ${fallbackError.message}`);
+                    }
+                }
+                
+                this.port = port;
                 
                 this.port.on('open', () => {
                     this.isConnected = true;
