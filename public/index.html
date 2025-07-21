@@ -574,6 +574,12 @@
                         <button class="btn btn-sm btn-danger" onclick="disconnectPrinter()" id="disconnectPrinterBtn" style="margin-left: 5px; display: none;">
                             <i class="fas fa-times"></i> Disconnect
                         </button>
+                        <button class="btn btn-sm btn-warning" onclick="forceDisconnectPrinter()" id="forceDisconnectPrinterBtn" style="margin-left: 5px;">
+                            <i class="fas fa-exclamation-triangle"></i> Force Disconnect
+                        </button>
+                        <p style="font-size: 0.7rem; color: #666; margin-top: 5px;">
+                            Use "Force Disconnect" if you get "Cannot lock port" errors
+                        </p>
                     </div>
                     
                     <!-- Movement Controls -->
@@ -1069,6 +1075,30 @@
                 }
             } catch (error) {
                 addLog(`Printer disconnection failed: ${error.message}`, 'error', 'errorLog');
+            }
+        }
+
+        async function forceDisconnectPrinter() {
+            try {
+                addLog('Force disconnecting from 3D printer...', 'warning', 'printerLog');
+                
+                const response = await fetch('/api/printer/force-disconnect', {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('printerStatus').textContent = 'Disconnected';
+                    document.getElementById('printerStatus').style.color = '#dc3545';
+                    document.getElementById('connectPrinterBtn').style.display = 'inline-block';
+                    document.getElementById('disconnectPrinterBtn').style.display = 'none';
+                    addLog('3D printer force disconnected successfully!', 'success', 'printerLog');
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                addLog(`Printer force disconnection failed: ${error.message}`, 'error', 'errorLog');
             }
         }
 

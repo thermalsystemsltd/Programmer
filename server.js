@@ -31,22 +31,41 @@ class PrinterController {
     }
 
     async connect(comPort, baudRate = 115200) {
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
             try {
                 // Check if SerialPort is available
                 if (!SerialPort) {
                     throw new Error('SerialPort library not available. Please run: npm install serialport@^11.0.0');
                 }
                 
+                // If already connected, disconnect first
+                if (this.isConnected && this.port) {
+                    console.log('🔄 Already connected, disconnecting first...');
+                    sendLogToClients({ type: 'info', message: '🔄 Already connected, disconnecting first...' });
+                    await this.disconnect();
+                    // Wait a bit for port to be fully released
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                
+                console.log(`🔌 Attempting to connect to 3D printer on ${comPort} at ${baudRate} baud...`);
+                sendLogToClients({ type: 'info', message: `🔌 Attempting to connect to 3D printer on ${comPort} at ${baudRate} baud...` });
+                
                 // Try different constructor syntaxes for compatibility
                 let port;
                 try {
                     // Try new syntax first (SerialPort v12+)
-                    port = new SerialPort({ path: comPort, baudRate: parseInt(baudRate) });
+                    port = new SerialPort({ 
+                        path: comPort, 
+                        baudRate: parseInt(baudRate),
+                        autoOpen: false // Don't open immediately
+                    });
                 } catch (constructorError) {
                     try {
                         // Fallback to old syntax (SerialPort v11 and below)
-                        port = new SerialPort(comPort, { baudRate: parseInt(baudRate) });
+                        port = new SerialPort(comPort, { 
+                            baudRate: parseInt(baudRate),
+                            autoOpen: false // Don't open immediately
+                        });
                     } catch (fallbackError) {
                         throw new Error(`Failed to create SerialPort: ${fallbackError.message}`);
                     }
@@ -64,7 +83,16 @@ class PrinterController {
                 this.port.on('error', (error) => {
                     this.isConnected = false;
                     console.error(`❌ 3D Printer connection error: ${error.message}`);
-                    sendLogToClients({ type: 'error', message: `❌ 3D Printer connection error: ${error.message}` });
+                    
+                    // Provide helpful error messages for common issues
+                    let errorMessage = `❌ 3D Printer connection error: ${error.message}`;
+                    if (error.message.includes('Cannot lock port')) {
+                        errorMessage += '\n💡 Tip: Close other applications using this port (like Pronterface) and try again.';
+                    } else if (error.message.includes('No such file or directory')) {
+                        errorMessage += '\n💡 Tip: Check if the port exists and the printer is connected.';
+                    }
+                    
+                    sendLogToClients({ type: 'error', message: errorMessage });
                     reject(error);
                 });
 
@@ -81,6 +109,16 @@ class PrinterController {
                     }
                 });
 
+                // Now open the port
+                this.port.open((error) => {
+                    if (error) {
+                        this.isConnected = false;
+                        console.error(`❌ Failed to open printer port: ${error.message}`);
+                        sendLogToClients({ type: 'error', message: `❌ Failed to open printer port: ${error.message}` });
+                        reject(error);
+                    }
+                });
+
             } catch (error) {
                 reject(error);
             }
@@ -88,10 +126,44 @@ class PrinterController {
     }
 
     async disconnect() {
-        if (this.port && this.isConnected) {
-            this.port.close();
-            this.isConnected = false;
-        }
+        return new Promise((resolve) => {
+            if (this.port && this.isConnected) {
+                console.log('🔌 Disconnecting from 3D printer...');
+                sendLogToClients({ type: 'info', message: '🔌 Disconnecting from 3D printer...' });
+                
+                // Remove all event listeners to prevent memory leaks
+                this.port.removeAllListeners();
+                
+                // Close the port with proper error handling
+                this.port.close((error) => {
+                    if (error) {
+                        console.error('❌ Error closing printer port:', error.message);
+                        sendLogToClients({ type: 'warning', message: `⚠️ Error closing printer port: ${error.message}` });
+                    } else {
+                        console.log('✅ Printer port closed successfully');
+                        sendLogToClients({ type: 'success', message: '✅ Printer port closed successfully' });
+                    }
+                    
+                    this.isConnected = false;
+                    this.port = null;
+                    resolve();
+                });
+                
+                // Fallback: if close callback doesn't work, force close after timeout
+                setTimeout(() => {
+                    if (this.port) {
+                        this.port.destroy();
+                        this.isConnected = false;
+                        this.port = null;
+                        console.log('🔧 Forced printer port closure');
+                        sendLogToClients({ type: 'warning', message: '🔧 Forced printer port closure' });
+                        resolve();
+                    }
+                }, 2000);
+            } else {
+                resolve();
+            }
+        });
     }
 
     async sendCommand(command) {
@@ -531,28 +603,40 @@ async function programPCBGrid() {
 async function testPrinterMovement() {
     return new Promise(async (resolve, reject) => {
         try {
-            // Try to connect to 3D printer
-            sendLogToClients({ type: 'info', message: '🔌 Attempting to connect to 3D printer for test movement...' });
-            
             let printerConnected = false;
-            try {
-                await printerController.connect(currentConfig.PRINTER_COM_PORT, currentConfig.PRINTER_BAUD_RATE);
+            
+            // Check if already connected
+            let wasAlreadyConnected = printerController.isConnected;
+            if (wasAlreadyConnected) {
+                sendLogToClients({ type: 'info', message: '✅ Using existing printer connection for test movement...' });
                 printerConnected = true;
+            } else {
+                // Try to connect to 3D printer
+                sendLogToClients({ type: 'info', message: '🔌 Attempting to connect to 3D printer for test movement...' });
                 
-                // Home the printer
+                try {
+                    await printerController.connect(currentConfig.PRINTER_COM_PORT, currentConfig.PRINTER_BAUD_RATE);
+                    printerConnected = true;
+                } catch (printerError) {
+                    sendLogToClients({ type: 'error', message: `❌ 3D Printer connection failed: ${printerError.message}` });
+                    reject(printerError);
+                    return;
+                }
+            }
+            
+            // Only home if not already homed
+            if (!printerController.isHomed) {
                 sendLogToClients({ type: 'info', message: '🏠 Homing 3D printer...' });
                 await printerController.home();
                 await printerController.waitForMovement();
-                
-                // Move to safe Z height
-                sendLogToClients({ type: 'info', message: `⬆️ Moving to safe Z height: ${currentConfig.PCB_Z_UP}mm` });
-                await printerController.moveTo(0, 0, currentConfig.PCB_Z_UP);
-                await printerController.waitForMovement();
-            } catch (printerError) {
-                sendLogToClients({ type: 'error', message: `❌ 3D Printer connection failed: ${printerError.message}` });
-                reject(printerError);
-                return;
+            } else {
+                sendLogToClients({ type: 'info', message: '✅ Printer already homed, skipping home command...' });
             }
+            
+            // Move to safe Z height
+            sendLogToClients({ type: 'info', message: `⬆️ Moving to safe Z height: ${currentConfig.PCB_Z_UP}mm` });
+            await printerController.moveTo(0, 0, currentConfig.PCB_Z_UP);
+            await printerController.waitForMovement();
             
             let totalPCBs = currentConfig.PCB_ROWS * currentConfig.PCB_COLS;
             let currentPCB = 0;
@@ -610,9 +694,13 @@ async function testPrinterMovement() {
             sendLogToClients({ type: 'error', message: `❌ Test Movement failed: ${error.message}` });
             reject(error);
         } finally {
-            // Disconnect from printer
-            if (printerConnected) {
+            // Only disconnect if we connected specifically for this test
+            // Don't disconnect if we were already connected before
+            if (printerConnected && !wasAlreadyConnected) {
+                sendLogToClients({ type: 'info', message: '🔌 Disconnecting printer after test (was connected for test only)' });
                 await printerController.disconnect();
+            } else if (wasAlreadyConnected) {
+                sendLogToClients({ type: 'info', message: '✅ Keeping printer connected (was already connected)' });
             }
         }
     });
@@ -1077,6 +1165,34 @@ app.post('/api/printer/disconnect', async (req, res) => {
         res.json({
             success: true,
             message: '3D Printer disconnected successfully'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+app.post('/api/printer/force-disconnect', async (req, res) => {
+    try {
+        console.log('🔧 Force disconnecting printer...');
+        sendLogToClients({ type: 'warning', message: '🔧 Force disconnecting printer...' });
+        
+        // Force close the port
+        if (printerController.port) {
+            printerController.port.removeAllListeners();
+            printerController.port.destroy();
+            printerController.isConnected = false;
+            printerController.port = null;
+        }
+        
+        // Wait a bit for port to be fully released
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        res.json({
+            success: true,
+            message: '3D printer force disconnected'
         });
     } catch (error) {
         res.status(500).json({
