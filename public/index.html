@@ -196,6 +196,56 @@
             margin-top: 15px;
             border: 2px solid #333;
             font-size: 0.85rem;
+            transition: height 0.3s ease;
+        }
+
+        .log-container.expanded {
+            height: 500px;
+        }
+
+        .log-section {
+            background: #2c2c2c;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            border: 1px solid #444;
+        }
+
+        .log-section-header {
+            background: #3c3c3c;
+            color: #fff;
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 6px 6px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            transition: background-color 0.2s ease;
+        }
+
+        .log-section-header:hover {
+            background: #4c4c4c;
+        }
+
+        .log-section-header i {
+            transition: transform 0.3s ease;
+        }
+
+        .log-section-header.collapsed i {
+            transform: rotate(-90deg);
+        }
+
+        .log-section-content {
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            transition: max-height 0.3s ease;
+        }
+
+        .log-section-content.collapsed {
+            max-height: 0;
+            padding: 0 10px;
+            overflow: hidden;
         }
 
         .log-entry {
@@ -236,6 +286,32 @@
             border-radius: 8px;
             text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
             animation: pulse 2s infinite;
+        }
+
+        .log-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+
+        .log-control-btn {
+            background: #3c3c3c;
+            color: #fff;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: background-color 0.2s ease;
+        }
+
+        .log-control-btn:hover {
+            background: #4c4c4c;
+        }
+
+        .log-control-btn.active {
+            background: #667eea;
         }
 
         @keyframes pulse {
@@ -563,18 +639,81 @@
                             <i class="fas fa-sync-alt"></i> Update
                         </button>
                     </div>
+                    
+                    <!-- Test Movement Button -->
+                    <div style="text-align: center; margin-bottom: 15px;">
+                        <button class="btn btn-warning" onclick="testPrinterMovement()" id="testMovementBtn" style="font-size: 1.1rem; padding: 15px;">
+                            <i class="fas fa-play"></i> Test Printer Movement (No Programming)
+                        </button>
+                        <p style="font-size: 0.8rem; color: #666; margin-top: 5px;">
+                            Moves to PCB positions with simulated programming delays
+                        </p>
+                    </div>
                 </div>
             </div>
 
             <!-- Log Output -->
             <div class="control-card">
                 <h3><i class="fas fa-terminal"></i> Log Output</h3>
-                <div class="log-container" id="logContainer">
-                    <div class="log-entry log-info">System initialized. Ready to start.</div>
+                
+                <!-- Log Controls -->
+                <div class="log-controls">
+                    <button class="log-control-btn" onclick="toggleLogExpansion()" id="expandLogBtn">
+                        <i class="fas fa-expand"></i> Expand Log
+                    </button>
+                    <button class="log-control-btn" onclick="clearLog()">
+                        <i class="fas fa-trash"></i> Clear Log
+                    </button>
+                    <button class="log-control-btn" onclick="toggleAllSections()" id="toggleAllBtn">
+                        <i class="fas fa-eye"></i> Toggle All
+                    </button>
                 </div>
-                <button class="btn" onclick="clearLog()" style="margin-top: 10px;">
-                    <i class="fas fa-trash"></i> Clear Log
-                </button>
+                
+                <div class="log-container" id="logContainer">
+                    <!-- General Log Section -->
+                    <div class="log-section">
+                        <div class="log-section-header" onclick="toggleSection('generalLog')">
+                            <span><i class="fas fa-info-circle"></i> General Log</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="log-section-content" id="generalLog">
+                            <div class="log-entry log-info">System initialized. Ready to start.</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Printer Log Section -->
+                    <div class="log-section">
+                        <div class="log-section-header" onclick="toggleSection('printerLog')">
+                            <span><i class="fas fa-print"></i> Printer Operations</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="log-section-content" id="printerLog">
+                            <div class="log-entry log-info">Printer log ready.</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Programming Log Section -->
+                    <div class="log-section">
+                        <div class="log-section-header" onclick="toggleSection('programmingLog')">
+                            <span><i class="fas fa-microchip"></i> Programming Operations</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="log-section-content" id="programmingLog">
+                            <div class="log-entry log-info">Programming log ready.</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Error Log Section -->
+                    <div class="log-section">
+                        <div class="log-section-header" onclick="toggleSection('errorLog')">
+                            <span><i class="fas fa-exclamation-triangle"></i> Errors & Warnings</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </div>
+                        <div class="log-section-content" id="errorLog">
+                            <div class="log-entry log-info">Error log ready.</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -656,11 +795,11 @@
                 document.getElementById('configStatus').textContent = '(Loaded)';
                 document.getElementById('configStatus').style.color = '#28a745';
                 
-                addLog('Configuration loaded', 'success');
+                addLog('Configuration loaded', 'success', 'generalLog');
             } catch (error) {
                 document.getElementById('configStatus').textContent = '(Error)';
                 document.getElementById('configStatus').style.color = '#dc3545';
-                addLog('Failed to load configuration', 'error');
+                addLog('Failed to load configuration', 'error', 'errorLog');
             }
         }
 
@@ -694,12 +833,12 @@
             const pcbZDown = document.getElementById('configPcbZDown').value;
             
             if (!comPort) {
-                addLog('Please select a COM port', 'error');
+                addLog('Please select a COM port', 'error', 'errorLog');
                 return;
             }
             
             setButtonLoading('saveConfigBtn', true);
-            addLog('Saving configuration...', 'info');
+            addLog('Saving configuration...', 'info', 'generalLog');
             
             try {
                 const response = await fetch('/api/config', {
@@ -726,7 +865,7 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    addLog('Configuration saved successfully!', 'success');
+                    addLog('Configuration saved successfully!', 'success', 'generalLog');
                     
                     // Update status and collapse panel
                     document.getElementById('configStatus').textContent = '(Saved)';
@@ -738,12 +877,12 @@
                     }, 1000);
                     
                 } else {
-                    addLog(`Configuration save failed: ${data.error}`, 'error');
+                    addLog(`Configuration save failed: ${data.error}`, 'error', 'errorLog');
                     document.getElementById('configStatus').textContent = '(Error)';
                     document.getElementById('configStatus').style.color = '#dc3545';
                 }
             } catch (error) {
-                addLog(`Network error: ${error.message}`, 'error');
+                addLog(`Network error: ${error.message}`, 'error', 'errorLog');
                 document.getElementById('configStatus').textContent = '(Error)';
                 document.getElementById('configStatus').style.color = '#dc3545';
             } finally {
@@ -759,13 +898,13 @@
             
             isProcessing = true;
             setButtonLoading('fullProcessBtn', true);
-            addLog('Starting full process...', 'info');
+            addLog('Starting full process...', 'info', 'programmingLog');
             
             try {
                 // Step 1: Fetch serial number via server proxy
                 const webhookUrl = 'https://n8n.ts1cloud.com/webhook/9121d50c-cccf-4e74-a168-8bbbefb3d79a';
                 
-                addLog(`Fetching serial number from: ${webhookUrl}`, 'info');
+                addLog(`Fetching serial number from: ${webhookUrl}`, 'info', 'programmingLog');
                 
                 const response = await fetch(`/api/proxy-webhook?url=${encodeURIComponent(webhookUrl)}`);
                 
@@ -780,7 +919,7 @@
                 }
                 
                 const data = result.data;
-                addLog(`Raw response: ${JSON.stringify(data)}`, 'info');
+                addLog(`Raw response: ${JSON.stringify(data)}`, 'info', 'programmingLog');
                 
                 // Extract serial number from n8n response format
                 const nextSerial = data.nextSerial || data.lastSerial || data.serial || data.data || data.value || data.number;
@@ -792,11 +931,11 @@
                 // Calculate the previous serial number
                 const lastSerial = (parseInt(nextSerial) - 1).toString();
                 
-                addLog(`Last serial: ${lastSerial}`, 'success');
-                addLog(`Next serial: ${nextSerial}`, 'success');
+                addLog(`Last serial: ${lastSerial}`, 'success', 'programmingLog');
+                addLog(`Next serial: ${nextSerial}`, 'success', 'programmingLog');
                 
                 // Step 2: Update Arduino file via server
-                addLog('Updating Arduino file with new serial number...', 'info');
+                addLog('Updating Arduino file with new serial number...', 'info', 'programmingLog');
                 const updateResponse = await fetch('/api/update-serial', {
                     method: 'POST',
                     headers: {
@@ -810,10 +949,10 @@
                     throw new Error(`Update failed: ${updateData.error}`);
                 }
                 
-                addLog('Arduino file updated successfully', 'success');
+                addLog('Arduino file updated successfully', 'success', 'programmingLog');
                 
                 // Step 3: Program device
-                addLog('Programming TS1 Sensor...', 'info');
+                addLog('Programming TS1 Sensor...', 'info', 'programmingLog');
                 const programResponse = await fetch('/api/program-device', {
                     method: 'POST',
                     headers: {
@@ -829,19 +968,19 @@
                     throw new Error(`Programming failed: ${programData.error}`);
                 }
                 
-                addLog('TS1 Sensor programmed successfully!', 'success');
+                addLog('TS1 Sensor programmed successfully!', 'success', 'programmingLog');
                 if (programData.output) {
-                    addLog('Upload details:', 'info');
-                    addLog(programData.output, 'info');
+                    addLog('Upload details:', 'info', 'programmingLog');
+                    addLog(programData.output, 'info', 'programmingLog');
                 }
                 
             } catch (error) {
-                addLog(`Process failed: ${error.message}`, 'error');
+                addLog(`Process failed: ${error.message}`, 'error', 'errorLog');
             } finally {
-                addLog('Stopping full process...', 'info');
+                addLog('Stopping full process...', 'info', 'programmingLog');
                 isProcessing = false;
                 setButtonLoading('fullProcessBtn', false);
-                addLog('Full process button reset complete', 'info');
+                addLog('Full process button reset complete', 'info', 'programmingLog');
             }
         }
 
@@ -851,7 +990,7 @@
             
             isProcessing = true;
             setButtonLoading('gridProgramBtn', true);
-            addLog('Starting grid programming process...', 'info');
+            addLog('Starting grid programming process...', 'info', 'programmingLog');
             
             try {
                 const response = await fetch('/api/printer/grid-program', {
@@ -864,13 +1003,13 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    addLog('Grid programming started successfully!', 'success');
-                    addLog('The system will now program multiple PCBs automatically.', 'info');
+                    addLog('Grid programming started successfully!', 'success', 'programmingLog');
+                    addLog('The system will now program multiple PCBs automatically.', 'info', 'programmingLog');
                 } else {
                     throw new Error(data.error);
                 }
             } catch (error) {
-                addLog(`Grid programming failed: ${error.message}`, 'error');
+                addLog(`Grid programming failed: ${error.message}`, 'error', 'errorLog');
             } finally {
                 isProcessing = false;
                 setButtonLoading('gridProgramBtn', false);
@@ -881,7 +1020,7 @@
         async function connectPrinter() {
             try {
                 setButtonLoading('connectPrinterBtn', true);
-                addLog('Connecting to 3D printer...', 'info');
+                addLog('Connecting to 3D printer...', 'info', 'printerLog');
                 
                 const response = await fetch('/api/printer/connect', {
                     method: 'POST',
@@ -897,13 +1036,13 @@
                     document.getElementById('printerStatus').style.color = '#28a745';
                     document.getElementById('connectPrinterBtn').style.display = 'none';
                     document.getElementById('disconnectPrinterBtn').style.display = 'inline-block';
-                    addLog('3D printer connected successfully!', 'success');
+                    addLog('3D printer connected successfully!', 'success', 'printerLog');
                     updatePosition();
                 } else {
                     throw new Error(data.error);
                 }
             } catch (error) {
-                addLog(`Printer connection failed: ${error.message}`, 'error');
+                addLog(`Printer connection failed: ${error.message}`, 'error', 'errorLog');
             } finally {
                 setButtonLoading('connectPrinterBtn', false);
             }
@@ -911,7 +1050,7 @@
 
         async function disconnectPrinter() {
             try {
-                addLog('Disconnecting from 3D printer...', 'info');
+                addLog('Disconnecting from 3D printer...', 'info', 'printerLog');
                 
                 const response = await fetch('/api/printer/disconnect', {
                     method: 'POST'
@@ -924,18 +1063,18 @@
                     document.getElementById('printerStatus').style.color = '#dc3545';
                     document.getElementById('connectPrinterBtn').style.display = 'inline-block';
                     document.getElementById('disconnectPrinterBtn').style.display = 'none';
-                    addLog('3D printer disconnected successfully!', 'success');
+                    addLog('3D printer disconnected successfully!', 'success', 'printerLog');
                 } else {
                     throw new Error(data.error);
                 }
             } catch (error) {
-                addLog(`Printer disconnection failed: ${error.message}`, 'error');
+                addLog(`Printer disconnection failed: ${error.message}`, 'error', 'errorLog');
             }
         }
 
         async function homePrinter() {
             try {
-                addLog('Homing 3D printer...', 'info');
+                addLog('Homing 3D printer...', 'info', 'printerLog');
                 
                 const response = await fetch('/api/printer/home', {
                     method: 'POST'
@@ -944,19 +1083,19 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    addLog('3D printer homed successfully!', 'success');
+                    addLog('3D printer homed successfully!', 'success', 'printerLog');
                     updatePosition();
                 } else {
                     throw new Error(data.error);
                 }
             } catch (error) {
-                addLog(`Printer homing failed: ${error.message}`, 'error');
+                addLog(`Printer homing failed: ${error.message}`, 'error', 'errorLog');
             }
         }
 
         async function movePrinter(axis, distance) {
             try {
-                addLog(`Moving printer ${axis} by ${distance}mm...`, 'info');
+                addLog(`Moving printer ${axis} by ${distance}mm...`, 'info', 'printerLog');
                 
                 const response = await fetch('/api/printer/move', {
                     method: 'POST',
@@ -972,13 +1111,13 @@
                 const data = await response.json();
                 
                 if (data.success) {
-                    addLog(`Printer moved ${axis} by ${distance}mm successfully!`, 'success');
+                    addLog(`Printer moved ${axis} by ${distance}mm successfully!`, 'success', 'printerLog');
                     updatePosition();
                 } else {
                     throw new Error(data.error);
                 }
             } catch (error) {
-                addLog(`Printer movement failed: ${error.message}`, 'error');
+                addLog(`Printer movement failed: ${error.message}`, 'error', 'errorLog');
             }
         }
 
@@ -1042,7 +1181,7 @@
                 updateDeviceList(data.devices);
                 
             } catch (error) {
-                addLog(`Failed to load devices: ${error.message}`, 'error');
+                addLog(`Failed to load devices: ${error.message}`, 'error', 'errorLog');
                 // Fallback to static options
                 updateDeviceDropdown([]);
             }
@@ -1050,9 +1189,9 @@
 
         // Refresh connected devices
         async function refreshDevices() {
-            addLog('Refreshing connected devices...', 'info');
+            addLog('Refreshing connected devices...', 'info', 'generalLog');
             await loadConnectedDevices();
-            addLog('Device list refreshed', 'success');
+            addLog('Device list refreshed', 'success', 'generalLog');
         }
 
         // Update device dropdown
@@ -1167,9 +1306,122 @@
             logContainer.scrollTop = logContainer.scrollHeight;
         }
 
+        // Test printer movement without programming
+        async function testPrinterMovement() {
+            if (isProcessing) return;
+            
+            isProcessing = true;
+            setButtonLoading('testMovementBtn', true);
+            addLog('Starting test printer movement (no programming)...', 'info', 'printerLog');
+            
+            try {
+                const response = await fetch('/api/printer/test-movement', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    addLog('Test movement started successfully!', 'success', 'printerLog');
+                    addLog('The printer will move to PCB positions with simulated programming delays.', 'info', 'printerLog');
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                addLog(`Test movement failed: ${error.message}`, 'error', 'errorLog');
+            } finally {
+                isProcessing = false;
+                setButtonLoading('testMovementBtn', false);
+            }
+        }
+
+        // Toggle log expansion
+        function toggleLogExpansion() {
+            const container = document.getElementById('logContainer');
+            const btn = document.getElementById('expandLogBtn');
+            
+            if (container.classList.contains('expanded')) {
+                container.classList.remove('expanded');
+                btn.innerHTML = '<i class="fas fa-expand"></i> Expand Log';
+            } else {
+                container.classList.add('expanded');
+                btn.innerHTML = '<i class="fas fa-compress"></i> Collapse Log';
+            }
+        }
+
+        // Toggle individual log sections
+        function toggleSection(sectionId) {
+            const header = document.querySelector(`#${sectionId}`).previousElementSibling;
+            const content = document.getElementById(sectionId);
+            
+            if (content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                header.classList.remove('collapsed');
+            } else {
+                content.classList.add('collapsed');
+                header.classList.add('collapsed');
+            }
+        }
+
+        // Toggle all sections
+        function toggleAllSections() {
+            const btn = document.getElementById('toggleAllBtn');
+            const sections = document.querySelectorAll('.log-section-content');
+            const headers = document.querySelectorAll('.log-section-header');
+            
+            const allCollapsed = Array.from(sections).every(section => section.classList.contains('collapsed'));
+            
+            sections.forEach(section => {
+                if (allCollapsed) {
+                    section.classList.remove('collapsed');
+                } else {
+                    section.classList.add('collapsed');
+                }
+            });
+            
+            headers.forEach(header => {
+                if (allCollapsed) {
+                    header.classList.remove('collapsed');
+                } else {
+                    header.classList.add('collapsed');
+                }
+            });
+            
+            btn.innerHTML = allCollapsed ? 
+                '<i class="fas fa-eye-slash"></i> Collapse All' : 
+                '<i class="fas fa-eye"></i> Expand All';
+        }
+
         function clearLog() {
-            document.getElementById('logContainer').innerHTML = 
-                '<div class="log-entry log-info">Log cleared.</div>';
+            // Clear all log sections
+            const sections = ['generalLog', 'printerLog', 'programmingLog', 'errorLog'];
+            sections.forEach(sectionId => {
+                const section = document.getElementById(sectionId);
+                section.innerHTML = `<div class="log-entry log-info">${sectionId.replace('Log', '')} log cleared.</div>`;
+            });
+        }
+
+        // Enhanced addLog function with section support
+        function addLog(message, type = 'info', section = 'generalLog') {
+            const logSection = document.getElementById(section);
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry log-${type}`;
+            logEntry.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logSection.appendChild(logEntry);
+            logSection.scrollTop = logSection.scrollHeight;
+            
+            // Also add to general log if not already there
+            if (section !== 'generalLog') {
+                const generalSection = document.getElementById('generalLog');
+                const generalEntry = document.createElement('div');
+                generalEntry.className = `log-entry log-${type}`;
+                generalEntry.innerHTML = `[${new Date().toLocaleTimeString()}] [${section.replace('Log', '')}] ${message}`;
+                generalSection.appendChild(generalEntry);
+                generalSection.scrollTop = generalSection.scrollHeight;
+            }
         }
     </script>
 </body>

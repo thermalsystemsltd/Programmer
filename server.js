@@ -527,6 +527,97 @@ async function programPCBGrid() {
     });
 }
 
+// Function to test printer movement without programming
+async function testPrinterMovement() {
+    return new Promise(async (resolve, reject) => {
+        try {
+            // Try to connect to 3D printer
+            sendLogToClients({ type: 'info', message: '🔌 Attempting to connect to 3D printer for test movement...' });
+            
+            let printerConnected = false;
+            try {
+                await printerController.connect(currentConfig.PRINTER_COM_PORT, currentConfig.PRINTER_BAUD_RATE);
+                printerConnected = true;
+                
+                // Home the printer
+                sendLogToClients({ type: 'info', message: '🏠 Homing 3D printer...' });
+                await printerController.home();
+                await printerController.waitForMovement();
+                
+                // Move to safe Z height
+                sendLogToClients({ type: 'info', message: `⬆️ Moving to safe Z height: ${currentConfig.PCB_Z_UP}mm` });
+                await printerController.moveTo(0, 0, currentConfig.PCB_Z_UP);
+                await printerController.waitForMovement();
+            } catch (printerError) {
+                sendLogToClients({ type: 'error', message: `❌ 3D Printer connection failed: ${printerError.message}` });
+                reject(printerError);
+                return;
+            }
+            
+            let totalPCBs = currentConfig.PCB_ROWS * currentConfig.PCB_COLS;
+            let currentPCB = 0;
+            
+            sendLogToClients({ type: 'info', message: `🎯 Starting test movement: ${currentConfig.PCB_ROWS} rows × ${currentConfig.PCB_COLS} columns = ${totalPCBs} positions` });
+            
+            for (let row = 0; row < currentConfig.PCB_ROWS; row++) {
+                for (let col = 0; col < currentConfig.PCB_COLS; col++) {
+                    currentPCB++;
+                    
+                    // Calculate position relative to start position
+                    const x = currentConfig.PCB_START_X + (col * currentConfig.PCB_GRID_X);
+                    const y = currentConfig.PCB_START_Y + (row * currentConfig.PCB_GRID_Y);
+                    
+                    sendLogToClients({ type: 'info', message: `🎯 Moving to position ${currentPCB}/${totalPCBs} at (${col}, ${row}) - X${x} Y${y}` });
+                    
+                    // Move to PCB position at safe Z height
+                    sendLogToClients({ type: 'info', message: `📍 Moving to position X${x} Y${y} Z${currentConfig.PCB_Z_UP}` });
+                    await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
+                    await printerController.waitForMovement();
+                    
+                    // Small delay to ensure stable position
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                    // Lower Z to programming height (simulated)
+                    sendLogToClients({ type: 'info', message: `⬇️ Lowering to programming height Z${currentConfig.PCB_Z_DOWN} (simulated)` });
+                    await printerController.moveTo(x, y, currentConfig.PCB_Z_DOWN);
+                    await printerController.waitForMovement();
+                    
+                    // Simulate programming delay
+                    sendLogToClients({ type: 'info', message: `⏳ Simulating programming delay for PCB ${currentPCB}/${totalPCBs}...` });
+                    await new Promise(resolve => setTimeout(resolve, 3000)); // 3 second delay
+                    
+                    sendLogToClients({ type: 'success', message: `✅ Position ${currentPCB}/${totalPCBs} completed (simulated programming)` });
+                    
+                    // Raise Z back to safe height
+                    sendLogToClients({ type: 'info', message: `⬆️ Raising to safe height Z${currentConfig.PCB_Z_UP}` });
+                    await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
+                    await printerController.waitForMovement();
+                    
+                    // Small delay between positions
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+            
+            // Return to home position
+            sendLogToClients({ type: 'info', message: '🏠 Returning to home position...' });
+            await printerController.moveTo(0, 0, currentConfig.PCB_Z_UP);
+            await printerController.waitForMovement();
+            
+            sendLogToClients({ type: 'big-success', message: `🎉 Test Movement Complete! ${totalPCBs} positions visited` });
+            resolve();
+            
+        } catch (error) {
+            sendLogToClients({ type: 'error', message: `❌ Test Movement failed: ${error.message}` });
+            reject(error);
+        } finally {
+            // Disconnect from printer
+            if (printerConnected) {
+                await printerController.disconnect();
+            }
+        }
+    });
+}
+
 // Function to program ESP8266
 function programESP8266(serialNumber = null) {
     return new Promise((resolve, reject) => {
@@ -1057,6 +1148,29 @@ app.post('/api/printer/grid-program', async (req, res) => {
         res.json({
             success: true,
             message: 'PCB Grid programming started'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+app.post('/api/printer/test-movement', async (req, res) => {
+    try {
+        // Start the test movement process (no programming)
+        testPrinterMovement()
+            .then(() => {
+                console.log('Test printer movement completed');
+            })
+            .catch((error) => {
+                console.error('Test printer movement failed:', error);
+            });
+        
+        res.json({
+            success: true,
+            message: 'Test printer movement started'
         });
     } catch (error) {
         res.status(500).json({
