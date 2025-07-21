@@ -562,14 +562,14 @@ function programESP8266(serialNumber = null) {
             return;
         }
         
-        const compileCommand = `"${arduinoCliPath}" compile --fqbn esp8266:esp8266:nodemcuv2 "${sketchDir}" --verbose`;
-        const uploadCommand = `"${arduinoCliPath}" upload --fqbn esp8266:esp8266:nodemcuv2 -p ${currentConfig.COM_PORT} "${sketchDir}" --verbose`;
+        const compileCommand = `"${arduinoCliPath}" compile --fqbn esp8266:esp8266:nodemcuv2 "${currentConfig.ARDUINO_SKETCH_PATH}" --verbose`;
+        const uploadCommand = `"${arduinoCliPath}" upload --fqbn esp8266:esp8266:nodemcuv2 -p ${currentConfig.COM_PORT} "${currentConfig.ARDUINO_SKETCH_PATH}" --verbose`;
         
         console.log(`🔨 Compile command: ${compileCommand}`);
         sendLogToClients({ type: 'info', message: `🔨 Compile command: ${compileCommand}` });
         
         // First compile
-        exec(compileCommand, { cwd: sketchDir }, (compileError, compileStdout, compileStderr) => {
+        exec(compileCommand, (compileError, compileStdout, compileStderr) => {
             if (compileError) {
                 const error = `Compilation failed: ${compileError.message}\nSTDOUT: ${compileStdout}\nSTDERR: ${compileStderr}`;
                 console.error(`❌ ${error}`);
@@ -593,7 +593,7 @@ function programESP8266(serialNumber = null) {
                     let uploadSuccess = false;
                     let uploadCompleted = false;
                     
-                    const uploadProcess = exec(uploadCommand, { cwd: sketchDir }, (uploadError, uploadStdout, uploadStderr) => {
+                    const uploadProcess = exec(uploadCommand, (uploadError, uploadStdout, uploadStderr) => {
                         uploadCompleted = true;
                         
                         if (uploadError) {
