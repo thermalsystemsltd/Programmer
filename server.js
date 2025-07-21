@@ -531,7 +531,7 @@ async function programPCBGrid() {
 function programESP8266(serialNumber = null) {
     return new Promise((resolve, reject) => {
         const sketchDir = path.dirname(currentConfig.ARDUINO_SKETCH_PATH);
-        const arduinoCliPath = path.join(__dirname, 'arduino-cli.exe');
+        const arduinoCliPath = path.join(__dirname, process.platform === 'win32' ? 'arduino-cli.exe' : 'arduino-cli');
         
         console.log(`🔧 TS1 Sensor Programming Started...`);
         console.log(`📁 Sketch directory: ${sketchDir}`);
@@ -877,7 +877,7 @@ app.post('/api/program-device', async (req, res) => {
 
 app.post('/api/test-arduino-cli', async (req, res) => {
     try {
-        const arduinoCliPath = path.join(__dirname, 'arduino-cli.exe');
+        const arduinoCliPath = path.join(__dirname, process.platform === 'win32' ? 'arduino-cli.exe' : 'arduino-cli');
         
         // Test Arduino CLI version
         const versionCommand = `"${arduinoCliPath}" version`;
