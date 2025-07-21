@@ -185,11 +185,11 @@ const DEFAULT_CONFIG = {
         ? 'C:\\Users\\adamp\\Documents\\Arduino\\LoraTX NEW PCB 12-F VERSION\\SENSOR V105 PCB INA226\\SENSOR\\mock_sketch.ino'
         : '/home/pi/Arduino/TS1_Sensor/TS1_Sensor.ino',
     WEBHOOK_URL: 'https://n8n.ts1cloud.com/webhook/9121d50c-cccf-4e74-a168-8bbbefb3d79a',
-    SUCCESS_WEBHOOK_URL: 'https://n8n.ts1cloud.com/webhook-test/565e375e-ab87-4851-bfb2-57037a5a944d',
+    SUCCESS_WEBHOOK_URL: 'https://n8n.ts1cloud.com/webhook/565e375e-ab87-4851-bfb2-57037a5a944d',
     SERIAL_LINE_NUMBER: 137,
     COM_PORT: process.platform === 'win32' ? 'COM5' : '/dev/ttyUSB0',
     BAUD_RATE: '115200',
-    PRINTER_COM_PORT: process.platform === 'win32' ? 'COM6' : '/dev/ttyUSB1',
+    PRINTER_COM_PORT: process.platform === 'win32' ? 'COM6' : '/dev/ttyUSB0',
     PRINTER_BAUD_RATE: '115200',
     PCB_GRID_X: 30,  // mm between PCBs horizontally
     PCB_GRID_Y: 110, // mm between PCBs vertically
