@@ -199,7 +199,7 @@ sudo systemctl start ts1-programmer
   "PCB_Z_DOWN": 0
 }
 ```
-
+/DEV/TTYUSB0
 ## 🎮 Usage
 
 ### Manual Programming
