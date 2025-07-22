@@ -503,11 +503,11 @@ function toggleBootMode() {
 // Function to program multiple PCBs in a grid pattern
 async function programPCBGrid() {
     return new Promise(async (resolve, reject) => {
+        let printerConnected = false;
+        
         try {
             // Try to connect to 3D printer
             sendLogToClients({ type: 'info', message: '🔌 Attempting to connect to 3D printer...' });
-            
-            let printerConnected = false;
             try {
                 await printerController.connect(currentConfig.PRINTER_COM_PORT, currentConfig.PRINTER_BAUD_RATE);
                 printerConnected = true;
@@ -521,6 +521,15 @@ async function programPCBGrid() {
                 sendLogToClients({ type: 'info', message: `⬆️ Moving to safe Z height: ${currentConfig.PCB_Z_UP}mm` });
                 await printerController.moveTo(0, 0, currentConfig.PCB_Z_UP);
                 await printerController.waitForMovement();
+                
+                // Verify connection is still stable after initial setup
+                if (!printerController.isConnected) {
+                    sendLogToClients({ type: 'warning', message: `⚠️ Printer connection lost after initial setup, attempting to reconnect...` });
+                    printerConnected = await ensurePrinterConnection();
+                    if (!printerConnected) {
+                        sendLogToClients({ type: 'warning', message: `⚠️ Continuing with programming only (printer reconnection failed)` });
+                    }
+                }
             } catch (printerError) {
                 sendLogToClients({ type: 'warning', message: `⚠️ 3D Printer not available: ${printerError.message}` });
                 sendLogToClients({ type: 'info', message: '🔄 Continuing with programming only (no printer movement)' });
@@ -530,6 +539,10 @@ async function programPCBGrid() {
             let currentPCB = 0;
             
             sendLogToClients({ type: 'info', message: `🎯 Starting PCB grid programming: ${currentConfig.PCB_ROWS} rows × ${currentConfig.PCB_COLS} columns = ${totalPCBs} PCBs` });
+            
+            // Add a delay before starting to ensure everything is stable
+            sendLogToClients({ type: 'info', message: `⏳ Stabilizing system before starting PCB programming...` });
+            await new Promise(resolve => setTimeout(resolve, 2000));
             
             for (let row = 0; row < currentConfig.PCB_ROWS; row++) {
                 for (let col = 0; col < currentConfig.PCB_COLS; col++) {
@@ -543,20 +556,32 @@ async function programPCBGrid() {
                     
                     // Move to PCB position at safe Z height (if printer connected)
                     if (printerConnected) {
-                        sendLogToClients({ type: 'info', message: `📍 Moving to PCB position X${x} Y${y} Z${currentConfig.PCB_Z_UP}` });
-                        await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
-                        await printerController.waitForMovement();
+                        // Check if printer is still connected before movement
+                        if (!printerController.isConnected) {
+                            sendLogToClients({ type: 'warning', message: `⚠️ Printer connection lost before movement, attempting to reconnect...` });
+                            printerConnected = await ensurePrinterConnection();
+                            if (!printerConnected) {
+                                sendLogToClients({ type: 'info', message: `🎯 Programming PCB ${currentPCB}/${totalPCBs} (no printer movement - connection lost)` });
+                                // Continue with programming only
+                            }
+                        }
                         
-                        // Small delay to ensure stable position
-                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        if (printerConnected) {
+                            sendLogToClients({ type: 'info', message: `📍 Moving to PCB position X${x} Y${y} Z${currentConfig.PCB_Z_UP}` });
+                            await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
+                            await printerController.waitForMovement();
                         
-                        // Lower Z to programming height
-                        sendLogToClients({ type: 'info', message: `⬇️ Lowering to programming height Z${currentConfig.PCB_Z_DOWN}` });
-                        await printerController.moveTo(x, y, currentConfig.PCB_Z_DOWN);
-                        await printerController.waitForMovement();
-                        
-                        // Small delay to ensure stable contact
-                        await new Promise(resolve => setTimeout(resolve, 2000));
+                            // Small delay to ensure stable position
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            
+                            // Lower Z to programming height
+                            sendLogToClients({ type: 'info', message: `⬇️ Lowering to programming height Z${currentConfig.PCB_Z_DOWN}` });
+                            await printerController.moveTo(x, y, currentConfig.PCB_Z_DOWN);
+                            await printerController.waitForMovement();
+                            
+                            // Small delay to ensure stable contact
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                        }
                     } else {
                         sendLogToClients({ type: 'info', message: `🎯 Programming PCB ${currentPCB}/${totalPCBs} (no printer movement)` });
                         // Small delay for programming
@@ -569,6 +594,15 @@ async function programPCBGrid() {
                         if (printerConnected) {
                             sendLogToClients({ type: 'info', message: `⏳ Stabilizing printer connection before programming...` });
                             await new Promise(resolve => setTimeout(resolve, 1000));
+                            
+                            // Double-check printer connection before programming
+                            if (!printerController.isConnected) {
+                                sendLogToClients({ type: 'warning', message: `⚠️ Printer connection lost before programming, attempting to reconnect...` });
+                                printerConnected = await ensurePrinterConnection();
+                                if (!printerConnected) {
+                                    sendLogToClients({ type: 'warning', message: `⚠️ Continuing with programming only (printer reconnection failed)` });
+                                }
+                            }
                         }
                         
                         const result = await programESP8266();
