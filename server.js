@@ -477,19 +477,26 @@ function toggleBootMode() {
         sendLogToClients({ type: 'info', message: `🔧 Toggling ESP8266 into boot mode...` });
         sendLogToClients({ type: 'info', message: `🔧 Boot command: ${bootCommand}` });
         
-        exec(bootCommand, { timeout: 30000 }, (error, stdout, stderr) => {
-            if (error) {
-                console.log(`⚠️ Boot mode toggle failed (this might be normal): ${error.message}`);
-                sendLogToClients({ type: 'warning', message: `⚠️ Boot mode toggle failed (this might be normal): ${error.message}` });
-                // Don't fail the process, just continue
-                resolve();
-                return;
-            }
-            
-            console.log(`✅ Boot mode toggle completed`);
-            sendLogToClients({ type: 'success', message: `✅ Boot mode toggle completed` });
-            resolve();
-        });
+        // Add a small delay before running esptool to ensure printer connection is stable
+        setTimeout(() => {
+            exec(bootCommand, { timeout: 30000 }, (error, stdout, stderr) => {
+                if (error) {
+                    console.log(`⚠️ Boot mode toggle failed (this might be normal): ${error.message}`);
+                    sendLogToClients({ type: 'warning', message: `⚠️ Boot mode toggle failed (this might be normal): ${error.message}` });
+                    // Don't fail the process, just continue
+                    resolve();
+                    return;
+                }
+                
+                console.log(`✅ Boot mode toggle completed`);
+                sendLogToClients({ type: 'success', message: `✅ Boot mode toggle completed` });
+                
+                // Add a small delay after esptool to ensure printer connection is stable
+                setTimeout(() => {
+                    resolve();
+                }, 1000);
+            });
+        }, 500);
     });
 }
 
@@ -558,8 +565,20 @@ async function programPCBGrid() {
                     
                     // Program the PCB
                     try {
+                        // Add a small delay before programming to ensure printer connection is stable
+                        if (printerConnected) {
+                            sendLogToClients({ type: 'info', message: `⏳ Stabilizing printer connection before programming...` });
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                        }
+                        
                         const result = await programESP8266();
                         sendLogToClients({ type: 'success', message: `✅ PCB ${currentPCB}/${totalPCBs} programmed successfully!` });
+                        
+                        // Add a small delay after programming to ensure printer connection is stable
+                        if (printerConnected) {
+                            sendLogToClients({ type: 'info', message: `⏳ Stabilizing printer connection after programming...` });
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                        }
                     } catch (error) {
                         sendLogToClients({ type: 'error', message: `❌ PCB ${currentPCB}/${totalPCBs} failed: ${error.message}` });
                         // Continue with next PCB instead of stopping
@@ -567,9 +586,14 @@ async function programPCBGrid() {
                     
                     // Raise Z back to safe height (if printer connected)
                     if (printerConnected) {
-                        sendLogToClients({ type: 'info', message: `⬆️ Raising to safe height Z${currentConfig.PCB_Z_UP}` });
-                        await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
-                        await printerController.waitForMovement();
+                        // Check if printer is still connected before trying to move
+                        printerConnected = await ensurePrinterConnection();
+                        
+                        if (printerConnected) {
+                            sendLogToClients({ type: 'info', message: `⬆️ Raising to safe height Z${currentConfig.PCB_Z_UP}` });
+                            await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
+                            await printerController.waitForMovement();
+                        }
                     }
                     
                     // Small delay between PCBs
@@ -579,9 +603,14 @@ async function programPCBGrid() {
             
             // Return to home position (if printer connected)
             if (printerConnected) {
-                sendLogToClients({ type: 'info', message: '🏠 Returning to home position...' });
-                await printerController.moveTo(0, 0, currentConfig.PCB_Z_UP);
-                await printerController.waitForMovement();
+                // Check if printer is still connected before trying to move
+                printerConnected = await ensurePrinterConnection();
+                
+                if (printerConnected) {
+                    sendLogToClients({ type: 'info', message: '🏠 Returning to home position...' });
+                    await printerController.moveTo(0, 0, currentConfig.PCB_Z_UP);
+                    await printerController.waitForMovement();
+                }
             }
             
             sendLogToClients({ type: 'big-success', message: `🎉 PCB Grid Programming Complete! ${totalPCBs} PCBs processed` });
@@ -704,6 +733,22 @@ async function testPrinterMovement() {
             }
         }
     });
+}
+
+// Function to check and restore printer connection
+async function ensurePrinterConnection() {
+    if (!printerController.isConnected) {
+        sendLogToClients({ type: 'warning', message: `⚠️ Printer connection lost, attempting to reconnect...` });
+        try {
+            await printerController.connect(currentConfig.PRINTER_COM_PORT, currentConfig.PRINTER_BAUD_RATE);
+            sendLogToClients({ type: 'success', message: `✅ Printer reconnected successfully` });
+            return true;
+        } catch (reconnectError) {
+            sendLogToClients({ type: 'error', message: `❌ Failed to reconnect printer: ${reconnectError.message}` });
+            return false;
+        }
+    }
+    return true;
 }
 
 // Function to program ESP8266
