@@ -469,7 +469,7 @@ function updateArduinoFile(newSerial) {
 // Function to toggle ESP8266 into boot mode using esptool
 function toggleBootMode() {
     return new Promise((resolve, reject) => {
-        const esptoolPath = path.join(__dirname, 'esptool.exe');
+        const esptoolPath = path.join(__dirname, process.platform === 'win32' ? 'esptool.exe' : 'esptool');
         const bootCommand = `"${esptoolPath}" --chip esp8266 --port ${currentConfig.COM_PORT} --baud 115200 --before default_reset --after hard_reset chip_id`;
         
         console.log(`🔧 Toggling ESP8266 into boot mode...`);
