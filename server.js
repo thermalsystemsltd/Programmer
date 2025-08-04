@@ -195,9 +195,27 @@ class PrinterController {
     }
 
     async moveTo(x, y, z = null) {
-        let command = `G0 X${x} Y${y}`;
-        if (z !== null) {
+        // Determine if this is a Z-only move, XY move, or combined move
+        let isZOnly = (x === this.currentPosition.x && y === this.currentPosition.y && z !== null);
+        let isXYOnly = (z === null || z === this.currentPosition.z);
+        
+        let command = `G0`;
+        
+        // Add coordinates
+        if (x !== this.currentPosition.x || y !== this.currentPosition.y) {
+            command += ` X${x} Y${y}`;
+        }
+        if (z !== null && z !== this.currentPosition.z) {
             command += ` Z${z}`;
+        }
+        
+        // Add appropriate speed based on movement type
+        if (isZOnly) {
+            // Z-only movement - use Z speed
+            command += ` F${currentConfig.PRINTER_SPEED_Z || 500}`;
+        } else if (!isZOnly) {
+            // XY movement (with or without Z) - use XY speed
+            command += ` F${currentConfig.PRINTER_SPEED_XY || 3000}`;
         }
         
         await this.sendCommand(command);
@@ -1196,7 +1214,7 @@ app.get('/api/config', (req, res) => {
 
 app.post('/api/config', (req, res) => {
     try {
-        const { webhookUrl, successWebhookUrl, arduinoSketchPath, serialLineNumber, comPort, baudRate, printerComPort, printerBaudRate, pcbPoints, pcbZUp, pcbZDown } = req.body;
+        const { webhookUrl, successWebhookUrl, arduinoSketchPath, serialLineNumber, comPort, baudRate, printerComPort, printerBaudRate, pcbPoints, pcbZUp, pcbZDown, printerSpeedXY, printerSpeedZ } = req.body;
         
         // Update configuration
         if (webhookUrl) currentConfig.WEBHOOK_URL = webhookUrl;
@@ -1210,6 +1228,8 @@ app.post('/api/config', (req, res) => {
         if (pcbPoints && Array.isArray(pcbPoints)) currentConfig.PCB_POINTS = pcbPoints;
         if (pcbZUp) currentConfig.PCB_Z_UP = parseFloat(pcbZUp);
         if (pcbZDown) currentConfig.PCB_Z_DOWN = parseFloat(pcbZDown);
+        if (printerSpeedXY) currentConfig.PRINTER_SPEED_XY = parseFloat(printerSpeedXY);
+        if (printerSpeedZ) currentConfig.PRINTER_SPEED_Z = parseFloat(printerSpeedZ);
         
         // Save to file
         if (saveConfig(currentConfig)) {

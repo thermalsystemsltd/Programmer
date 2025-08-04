@@ -1,11 +1,11 @@
 {
-  "ARDUINO_SKETCH_PATH": "/home/pi/Arduino/TS1_Sensor/TS1_Sensor.ino",
-  "WEBHOOK_URL": "https://n8n.ts1cloud.com/webhook/your-webhook-id",
-  "SUCCESS_WEBHOOK_URL": "https://n8n.ts1cloud.com/webhook/success-notification",
+  "ARDUINO_SKETCH_PATH": "/home/MONITOR/sensor/sensor.ino",
+  "WEBHOOK_URL": "https://n8n.ts1cloud.com/webhook/9121d50c-cccf-4e74-a168-8bbbefb3d79a",
+  "SUCCESS_WEBHOOK_URL": "https://n8n.ts1cloud.com/webhook/565e375e-ab87-4851-bfb2-57037a5a944d",
   "SERIAL_LINE_NUMBER": 137,
-  "COM_PORT": "/dev/ttyUSB0",
+  "COM_PORT": "/dev/ttyUSB1",
   "BAUD_RATE": "115200",
-  "PRINTER_COM_PORT": "COM6",
+  "PRINTER_COM_PORT": "/dev/ttyUSB0",
   "PRINTER_BAUD_RATE": "115200",
   "PCB_POINTS": [
     {"x": 39, "y": 70},
@@ -19,6 +19,8 @@
     {"x": 114, "y": 175},
     {"x": 139, "y": 175}
   ],
-  "PCB_Z_UP": 20,
-  "PCB_Z_DOWN": 5
+  "PCB_Z_UP": 25,
+  "PCB_Z_DOWN": 2,
+  "PRINTER_SPEED_XY": 3000,
+  "PRINTER_SPEED_Z": 500
 } 

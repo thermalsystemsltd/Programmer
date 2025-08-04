@@ -515,6 +515,19 @@
                         </div>
                     </div>
                     
+                    <div class="configuration-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div>
+                            <label for="configPrinterSpeedXY" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">XY Movement Speed (mm/min):</label>
+                            <input type="number" id="configPrinterSpeedXY" value="3000" style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px;">
+                            <p style="font-size: 0.8rem; color: #666; margin-top: 5px;">Speed for X/Y movements (default: 3000)</p>
+                        </div>
+                        <div>
+                            <label for="configPrinterSpeedZ" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">Z Movement Speed (mm/min):</label>
+                            <input type="number" id="configPrinterSpeedZ" value="500" style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px;">
+                            <p style="font-size: 0.8rem; color: #666; margin-top: 5px;">Speed for Z movements (default: 500)</p>
+                        </div>
+                    </div>
+                    
                     <div style="display: flex; align-items: end;">
                         <button class="btn btn-success" onclick="saveConfig()" id="saveConfigBtn" style="width: 100%;">
                             <i class="fas fa-save"></i> Save Configuration
@@ -844,6 +857,8 @@
                 document.getElementById('configPrinterBaudRate').value = config.PRINTER_BAUD_RATE;
                 document.getElementById('configPcbZUp').value = config.PCB_Z_UP;
                 document.getElementById('configPcbZDown').value = config.PCB_Z_DOWN;
+                document.getElementById('configPrinterSpeedXY').value = config.PRINTER_SPEED_XY || 3000;
+                document.getElementById('configPrinterSpeedZ').value = config.PRINTER_SPEED_Z || 500;
                 
                 // Handle PCB_POINTS array
                 if (config.PCB_POINTS && Array.isArray(config.PCB_POINTS)) {
@@ -902,6 +917,8 @@
             const printerBaudRate = document.getElementById('configPrinterBaudRate').value;
             const pcbZUp = document.getElementById('configPcbZUp').value;
             const pcbZDown = document.getElementById('configPcbZDown').value;
+            const printerSpeedXY = document.getElementById('configPrinterSpeedXY').value;
+            const printerSpeedZ = document.getElementById('configPrinterSpeedZ').value;
             
             // Parse PCB_POINTS from textarea
             let pcbPoints = [];
@@ -939,7 +956,9 @@
                         printerBaudRate,
                         pcbPoints,
                         pcbZUp,
-                        pcbZDown
+                        pcbZDown,
+                        printerSpeedXY,
+                        printerSpeedZ
                     })
                 });
                 
