@@ -629,6 +629,58 @@
                         </button>
                     </div>
                     
+                    <!-- Manual Movement Controls -->
+                    <div style="margin-bottom: 15px;">
+                        <h4 style="margin-bottom: 10px; color: #2c3e50; text-align: center;">
+                            <i class="fas fa-arrows-alt"></i> Manual Movement Controls
+                        </h4>
+                        
+                        <!-- Movement Distance Input -->
+                        <div style="text-align: center; margin-bottom: 10px;">
+                            <label for="movementDistance" style="font-size: 0.9rem; margin-right: 8px;">Movement Distance (mm):</label>
+                            <input type="number" id="movementDistance" value="1" min="0.1" max="100" step="0.1" style="width: 80px; padding: 4px; border: 1px solid #ccc; border-radius: 4px;">
+                        </div>
+                        
+                        <!-- X and Y Movement Grid -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                            <div></div>
+                            <button class="btn btn-control btn-sm" onclick="movePrinter('Y', 1)" id="moveYPlusBtn">
+                                <i class="fas fa-arrow-up"></i> Y+
+                            </button>
+                            <div></div>
+                            
+                            <button class="btn btn-control btn-sm" onclick="movePrinter('X', -1)" id="moveXMinusBtn">
+                                <i class="fas fa-arrow-left"></i> X-
+                            </button>
+                            <button class="btn btn-control btn-sm" onclick="homePrinter()" id="homeBtn" style="background: #dc3545; color: white;">
+                                <i class="fas fa-home"></i> HOME
+                            </button>
+                            <button class="btn btn-control btn-sm" onclick="movePrinter('X', 1)" id="moveXPlusBtn">
+                                <i class="fas fa-arrow-right"></i> X+
+                            </button>
+                            
+                            <div></div>
+                            <button class="btn btn-control btn-sm" onclick="movePrinter('Y', -1)" id="moveYMinusBtn">
+                                <i class="fas fa-arrow-down"></i> Y-
+                            </button>
+                            <div></div>
+                        </div>
+                        
+                        <!-- Z Movement Controls -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <button class="btn btn-control btn-sm" onclick="movePrinter('Z', 1)" id="moveZPlusBtn">
+                                <i class="fas fa-arrow-up"></i> Z+
+                            </button>
+                            <button class="btn btn-control btn-sm" onclick="movePrinter('Z', -1)" id="moveZMinusBtn">
+                                <i class="fas fa-arrow-down"></i> Z-
+                            </button>
+                        </div>
+                        
+                        <p style="font-size: 0.8rem; color: #666; margin-top: 5px; text-align: center;">
+                            Use these controls to manually move the printer to each PCB location
+                        </p>
+                    </div>
+                    
                     <!-- Test Movement Button -->
                     <div style="text-align: center; margin-bottom: 15px;">
                         <button class="btn btn-warning" onclick="testPrinterMovement()" id="testMovementBtn" style="font-size: 1.1rem; padding: 15px;">
@@ -642,13 +694,13 @@
                     <!-- Individual PCB Test Buttons -->
                     <div style="margin-bottom: 15px;">
                         <h4 style="margin-bottom: 10px; color: #2c3e50; text-align: center;">
-                            <i class="fas fa-crosshairs"></i> Individual PCB Test Buttons
+                            <i class="fas fa-crosshairs"></i> Individual PCB Test & Save Buttons
                         </h4>
                         <div id="individualPcbButtons" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
                             <!-- Buttons will be generated dynamically -->
                         </div>
                         <p style="font-size: 0.8rem; color: #666; margin-top: 5px; text-align: center;">
-                            Test individual PCB points with simulated programming
+                            Test individual PCB points or save current position to PCB location
                         </p>
                     </div>
                 </div>
@@ -750,6 +802,12 @@
             connectToLogs();
             loadConfiguration();
             loadConnectedDevices();
+            
+            // Initial position update
+            updatePosition();
+            
+            // Set up periodic position updates (every 2 seconds)
+            setInterval(updatePosition, 2000);
         });
 
         // Check server status
@@ -1388,7 +1446,7 @@
             }
         }
 
-        // Generate individual PCB test buttons
+        // Generate individual PCB test and save buttons
         function generateIndividualPcbButtons() {
             const container = document.getElementById('individualPcbButtons');
             container.innerHTML = '';
@@ -1409,14 +1467,29 @@
             }
             
             for (let i = 0; i < totalPoints; i++) {
-                const button = document.createElement('button');
-                button.className = 'btn btn-control btn-sm';
-                button.style.cssText = 'padding: 8px 4px; font-size: 0.8rem; min-height: auto;';
-                button.innerHTML = `PCB ${i + 1}`;
-                button.onclick = () => testIndividualPcbPoint(i);
-                button.id = `testPcbBtn${i}`;
+                // Create container for each PCB point
+                const pcbContainer = document.createElement('div');
+                pcbContainer.style.cssText = 'display: flex; flex-direction: column; gap: 4px;';
                 
-                container.appendChild(button);
+                // Test button
+                const testButton = document.createElement('button');
+                testButton.className = 'btn btn-control btn-sm';
+                testButton.style.cssText = 'padding: 6px 4px; font-size: 0.7rem; min-height: auto; background: #007bff; color: white;';
+                testButton.innerHTML = `Test ${i + 1}`;
+                testButton.onclick = () => testIndividualPcbPoint(i);
+                testButton.id = `testPcbBtn${i}`;
+                
+                // Save button
+                const saveButton = document.createElement('button');
+                saveButton.className = 'btn btn-control btn-sm';
+                saveButton.style.cssText = 'padding: 6px 4px; font-size: 0.7rem; min-height: auto; background: #28a745; color: white;';
+                saveButton.innerHTML = `Save ${i + 1}`;
+                saveButton.onclick = () => savePcbLocation(i);
+                saveButton.id = `savePcbBtn${i}`;
+                
+                pcbContainer.appendChild(testButton);
+                pcbContainer.appendChild(saveButton);
+                container.appendChild(pcbContainer);
             }
         }
 
@@ -1454,6 +1527,129 @@
                 isProcessing = false;
                 setButtonLoading(buttonId, false);
             }
+        }
+
+        // Save current position to PCB location
+        async function savePcbLocation(pointIndex) {
+            if (isProcessing) return;
+            
+            isProcessing = true;
+            const buttonId = `savePcbBtn${pointIndex}`;
+            setButtonLoading(buttonId, true);
+            addLog(`Saving current position to PCB Point ${pointIndex + 1}...`, 'info', 'printerLog');
+            
+            try {
+                const response = await fetch('/api/printer/save-pcb-location', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        pointIndex: pointIndex
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    addLog(`✅ PCB Point ${pointIndex + 1} location saved successfully!`, 'success', 'printerLog');
+                    addLog(`Saved position: X${data.savedPosition.x} Y${data.savedPosition.y}`, 'info', 'printerLog');
+                    
+                    // Update the configuration display
+                    updatePcbPointsDisplay();
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                addLog(`Failed to save PCB location: ${error.message}`, 'error', 'errorLog');
+            } finally {
+                isProcessing = false;
+                setButtonLoading(buttonId, false);
+            }
+        }
+
+        // Manual printer movement
+        async function movePrinter(axis, direction) {
+            if (isProcessing) return;
+            
+            const distanceInput = document.getElementById('movementDistance');
+            const distance = parseFloat(distanceInput.value) * direction;
+            
+            if (isNaN(distance) || distance === 0) {
+                addLog('Invalid movement distance', 'error', 'errorLog');
+                return;
+            }
+            
+            isProcessing = true;
+            const buttonId = `move${axis}${direction > 0 ? 'Plus' : 'Minus'}Btn`;
+            setButtonLoading(buttonId, true);
+            addLog(`Moving ${axis} by ${Math.abs(distance)}mm...`, 'info', 'printerLog');
+            
+            try {
+                const response = await fetch('/api/printer/move-relative', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        axis: axis,
+                        distance: distance
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    addLog(`✅ Moved ${axis} by ${Math.abs(distance)}mm`, 'success', 'printerLog');
+                    updatePosition(); // Update position display
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                addLog(`Movement failed: ${error.message}`, 'error', 'errorLog');
+            } finally {
+                isProcessing = false;
+                setButtonLoading(buttonId, false);
+            }
+        }
+
+        // Home printer
+        async function homePrinter() {
+            if (isProcessing) return;
+            
+            isProcessing = true;
+            setButtonLoading('homeBtn', true);
+            addLog('Homing printer...', 'info', 'printerLog');
+            
+            try {
+                const response = await fetch('/api/printer/home', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    addLog('✅ Printer homed successfully', 'success', 'printerLog');
+                    updatePosition(); // Update position display
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                addLog(`Homing failed: ${error.message}`, 'error', 'errorLog');
+            } finally {
+                isProcessing = false;
+                setButtonLoading('homeBtn', false);
+            }
+        }
+
+        // Update PCB points display in configuration
+        function updatePcbPointsDisplay() {
+            // This function will be called after saving a location to refresh the display
+            // For now, we'll just reload the configuration
+            loadConfiguration();
         }
 
         // Toggle log expansion

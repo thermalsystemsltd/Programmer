@@ -1555,6 +1555,100 @@ app.get('/api/printer/status', async (req, res) => {
     }
 });
 
+// Manual movement controls
+app.post('/api/printer/move-relative', async (req, res) => {
+    try {
+        const { axis, distance } = req.body;
+        
+        if (!axis || distance === undefined) {
+            return res.status(400).json({
+                success: false,
+                error: 'Axis and distance are required'
+            });
+        }
+        
+        if (!['X', 'Y', 'Z'].includes(axis.toUpperCase())) {
+            return res.status(400).json({
+                success: false,
+                error: 'Axis must be X, Y, or Z'
+            });
+        }
+        
+        await ensurePrinterConnection();
+        await printerController.moveRelative(axis, parseFloat(distance));
+        await printerController.waitForMovement();
+        
+        const newPosition = await printerController.getPosition();
+        
+        res.json({
+            success: true,
+            message: `Moved ${axis.toUpperCase()} by ${distance}mm`,
+            position: newPosition
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// Save current position to a specific PCB point
+app.post('/api/printer/save-pcb-location', async (req, res) => {
+    try {
+        const { pointIndex } = req.body;
+        
+        if (pointIndex === undefined || pointIndex < 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'Point index is required and must be a non-negative integer'
+            });
+        }
+        
+        await ensurePrinterConnection();
+        const currentPosition = await printerController.getPosition();
+        
+        // Load current config
+        const currentConfig = loadConfig();
+        
+        // Ensure PCB_POINTS array exists and has enough elements
+        if (!currentConfig.PCB_POINTS) {
+            currentConfig.PCB_POINTS = [];
+        }
+        
+        // Extend array if needed
+        while (currentConfig.PCB_POINTS.length <= pointIndex) {
+            currentConfig.PCB_POINTS.push({ x: 0, y: 0 });
+        }
+        
+        // Update the specific point
+        currentConfig.PCB_POINTS[pointIndex] = {
+            x: parseFloat(currentPosition.x.toFixed(2)),
+            y: parseFloat(currentPosition.y.toFixed(2))
+        };
+        
+        // Save the updated config
+        saveConfig(currentConfig);
+        
+        sendLogToClients({ 
+            type: 'success', 
+            message: `✅ PCB Point ${pointIndex + 1} location saved: X${currentConfig.PCB_POINTS[pointIndex].x} Y${currentConfig.PCB_POINTS[pointIndex].y}` 
+        });
+        
+        res.json({
+            success: true,
+            message: `PCB Point ${pointIndex + 1} location saved`,
+            savedPosition: currentConfig.PCB_POINTS[pointIndex],
+            position: currentPosition
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 // Get connected devices and COM ports
 app.get('/api/connected-devices', async (req, res) => {
     try {
