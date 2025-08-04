@@ -13,6 +13,6 @@
   "PCB_COLS": 5,
   "PCB_START_X": 0,
   "PCB_START_Y": 0,
-  "PCB_Z_UP": 10,
-  "PCB_Z_DOWN": 0
+  "PCB_Z_UP": 20,
+  "PCB_Z_DOWN": 5
 } 

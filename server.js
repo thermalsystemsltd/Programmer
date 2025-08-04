@@ -721,8 +721,18 @@ async function testPrinterMovement() {
                     await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
                     await printerController.waitForMovement();
                     
+                    // Add longer pause for first and second positions
+                    let pauseTime = 1000; // Default 1 second
+                    if (currentPCB === 1) {
+                        pauseTime = 5000; // 5 seconds for first position
+                        sendLogToClients({ type: 'info', message: `⏸️ Extended pause at first position (5 seconds)...` });
+                    } else if (currentPCB === 2) {
+                        pauseTime = 5000; // 5 seconds for second position
+                        sendLogToClients({ type: 'info', message: `⏸️ Extended pause at second position (5 seconds)...` });
+                    }
+                    
                     // Small delay to ensure stable position
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    await new Promise(resolve => setTimeout(resolve, pauseTime));
                     
                     // Lower Z to programming height (simulated)
                     sendLogToClients({ type: 'info', message: `⬇️ Lowering to programming height Z${currentConfig.PCB_Z_DOWN} (simulated)` });
