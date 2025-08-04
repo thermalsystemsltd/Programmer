@@ -1036,10 +1036,10 @@ app.post('/api/config', (req, res) => {
         if (pcbGridY) currentConfig.PCB_GRID_Y = parseInt(pcbGridY);
         if (pcbRows) currentConfig.PCB_ROWS = parseInt(pcbRows);
         if (pcbCols) currentConfig.PCB_COLS = parseInt(pcbCols);
-        if (pcbStartX) currentConfig.PCB_START_X = parseInt(pcbStartX);
-        if (pcbStartY) currentConfig.PCB_START_Y = parseInt(pcbStartY);
-        if (pcbZUp) currentConfig.PCB_Z_UP = parseInt(pcbZUp);
-        if (pcbZDown) currentConfig.PCB_Z_DOWN = parseInt(pcbZDown);
+        if (pcbStartX) currentConfig.PCB_START_X = parseFloat(pcbStartX);
+        if (pcbStartY) currentConfig.PCB_START_Y = parseFloat(pcbStartY);
+        if (pcbZUp) currentConfig.PCB_Z_UP = parseFloat(pcbZUp);
+        if (pcbZDown) currentConfig.PCB_Z_DOWN = parseFloat(pcbZDown);
         
         // Save to file
         if (saveConfig(currentConfig)) {
