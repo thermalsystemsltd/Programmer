@@ -765,25 +765,19 @@ async function testPrinterMovement() {
                 
                 sendLogToClients({ type: 'success', message: `✅ Position ${currentPCB}/${totalPCBs} completed (simulated programming)` });
                 
-                // Raise Z back to safe height
-                sendLogToClients({ type: 'info', message: `⬆️ Raising to safe height Z${currentConfig.PCB_Z_UP}` });
+                // Raise Z back to safe height and go directly home
+                sendLogToClients({ type: 'info', message: `⬆️ Raising to safe height Z${currentConfig.PCB_Z_UP} and going home...` });
                 await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
+                await printerController.waitForMovement();
+                
+                // Go directly home from current position
+                sendLogToClients({ type: 'info', message: '🏠 Going directly home...' });
+                await printerController.home();
                 await printerController.waitForMovement();
                 
                 // Small delay between positions
                 await new Promise(resolve => setTimeout(resolve, 1000));
             }
-            
-            // Move to safe Z height before homing
-            const safeZHeight = Math.max(currentConfig.PCB_Z_UP + 10, 50); // At least 10mm above PCB_Z_UP or 50mm minimum
-            sendLogToClients({ type: 'info', message: `⬆️ Moving to safe Z height (${safeZHeight}mm) before homing...` });
-            await printerController.moveTo(0, 0, safeZHeight);
-            await printerController.waitForMovement();
-            
-            // Return to home position at safe height
-            sendLogToClients({ type: 'info', message: '🏠 Returning to home position at safe height...' });
-            await printerController.moveTo(0, 0, safeZHeight);
-            await printerController.waitForMovement();
             
             // Final summary with all positions visited
             sendLogToClients({ type: 'big-success', message: `🎉 Test Movement Complete! ${totalPCBs} positions visited` });
@@ -888,20 +882,14 @@ async function testIndividualPCBPoint(pointIndex) {
             
             sendLogToClients({ type: 'success', message: `✅ PCB Point ${pointIndex + 1} completed (simulated programming)` });
             
-            // Raise Z back to safe height
-            sendLogToClients({ type: 'info', message: `⬆️ Raising to safe height Z${currentConfig.PCB_Z_UP}` });
+            // Raise Z back to safe height and go directly home
+            sendLogToClients({ type: 'info', message: `⬆️ Raising to safe height Z${currentConfig.PCB_Z_UP} and going home...` });
             await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
             await printerController.waitForMovement();
             
-            // Move to safe Z height before homing
-            const safeZHeight = Math.max(currentConfig.PCB_Z_UP + 10, 50); // At least 10mm above PCB_Z_UP or 50mm minimum
-            sendLogToClients({ type: 'info', message: `⬆️ Moving to safe Z height (${safeZHeight}mm) before homing...` });
-            await printerController.moveTo(0, 0, safeZHeight);
-            await printerController.waitForMovement();
-            
-            // Return to home position at safe height
-            sendLogToClients({ type: 'info', message: '🏠 Returning to home position at safe height...' });
-            await printerController.moveTo(0, 0, safeZHeight);
+            // Go directly home from current position
+            sendLogToClients({ type: 'info', message: '🏠 Going directly home...' });
+            await printerController.home();
             await printerController.waitForMovement();
             
             // Final summary
