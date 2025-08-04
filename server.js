@@ -196,8 +196,12 @@ class PrinterController {
 
     async moveTo(x, y, z = null) {
         // Determine if this is a Z-only move, XY move, or combined move
-        let isZOnly = (x === this.currentPosition.x && y === this.currentPosition.y && z !== null);
-        let isXYOnly = (z === null || z === this.currentPosition.z);
+        let isZOnly = (x === this.currentPosition.x && y === this.currentPosition.y && z !== null && z !== this.currentPosition.z);
+        
+        // Debug logging for Z-only movement detection
+        if (z !== null && z !== this.currentPosition.z) {
+            sendLogToClients({ type: 'info', message: `🔍 DEBUG: Z movement requested - Current Z: ${this.currentPosition.z}, Target Z: ${z}, isZOnly: ${isZOnly}` });
+        }
         
         let command = `G0`;
         
@@ -214,7 +218,7 @@ class PrinterController {
             // Z-only movement - use Z speed
             command += ` F${currentConfig.PRINTER_SPEED_Z || 500}`;
             sendLogToClients({ type: 'info', message: `🔧 Sending Z-only movement command: ${command}` });
-        } else if (!isZOnly) {
+        } else {
             // XY movement (with or without Z) - use XY speed
             command += ` F${currentConfig.PRINTER_SPEED_XY || 3000}`;
             sendLogToClients({ type: 'info', message: `🔧 Sending movement command: ${command}` });
@@ -245,6 +249,21 @@ class PrinterController {
         }
         
         await this.moveTo(newX, newY, newZ);
+    }
+
+    async moveZOnly(targetZ) {
+        // Explicit Z-only movement function
+        if (targetZ === this.currentPosition.z) {
+            sendLogToClients({ type: 'info', message: `⏭️ Skipping Z movement - already at Z${targetZ}` });
+            return;
+        }
+        
+        const command = `G0 Z${targetZ} F${currentConfig.PRINTER_SPEED_Z || 500}`;
+        sendLogToClients({ type: 'info', message: `🔧 Sending explicit Z-only command: ${command}` });
+        
+        await this.sendCommand(command);
+        this.currentPosition.z = targetZ;
+        sendLogToClients({ type: 'info', message: `📍 Z moved to ${targetZ}` });
     }
 
     async waitForMovement() {
@@ -826,8 +845,8 @@ async function testPrinterMovement() {
                 sendLogToClients({ type: 'success', message: `✅ Position ${currentPCB}/${totalPCBs} completed (simulated programming)` });
                 
                 // Raise Z back to safe height FIRST (before any XY movement)
-                sendLogToClients({ type: 'info', message: `⬆️ Raising Z to safe height Z${currentConfig.PCB_Z_UP} (Z-only movement)...` });
-                await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
+                sendLogToClients({ type: 'info', message: `⬆️ Raising Z to safe height Z${currentConfig.PCB_Z_UP} (explicit Z-only movement)...` });
+                await printerController.moveZOnly(currentConfig.PCB_Z_UP);
                 await printerController.waitForMovement();
                 
                 // Additional wait to ensure Z movement completes
@@ -843,7 +862,7 @@ async function testPrinterMovement() {
                         sendLogToClients({ type: 'warning', message: `⚠️ Z height mismatch! Expected Z${currentConfig.PCB_Z_UP}, but printer reports Z${currentPos.z}` });
                         // Force Z to safe height before moving home
                         sendLogToClients({ type: 'info', message: `🔄 Forcing Z to safe height Z${currentConfig.PCB_Z_UP}...` });
-                        await printerController.moveTo(currentPos.x, currentPos.y, currentConfig.PCB_Z_UP);
+                        await printerController.moveZOnly(currentConfig.PCB_Z_UP);
                         await printerController.waitForMovement();
                         // Wait again after forced correction
                         await new Promise(resolve => setTimeout(resolve, 2000));
@@ -967,8 +986,8 @@ async function testIndividualPCBPoint(pointIndex) {
             sendLogToClients({ type: 'success', message: `✅ PCB Point ${pointIndex + 1} completed (simulated programming)` });
             
             // Raise Z back to safe height FIRST (before any XY movement)
-            sendLogToClients({ type: 'info', message: `⬆️ Raising Z to safe height Z${currentConfig.PCB_Z_UP} (Z-only movement)...` });
-            await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
+            sendLogToClients({ type: 'info', message: `⬆️ Raising Z to safe height Z${currentConfig.PCB_Z_UP} (explicit Z-only movement)...` });
+            await printerController.moveZOnly(currentConfig.PCB_Z_UP);
             await printerController.waitForMovement();
             
             // Additional wait to ensure Z movement completes
@@ -984,7 +1003,7 @@ async function testIndividualPCBPoint(pointIndex) {
                     sendLogToClients({ type: 'warning', message: `⚠️ Z height mismatch! Expected Z${currentConfig.PCB_Z_UP}, but printer reports Z${currentPos.z}` });
                     // Force Z to safe height before moving home
                     sendLogToClients({ type: 'info', message: `🔄 Forcing Z to safe height Z${currentConfig.PCB_Z_UP}...` });
-                    await printerController.moveTo(currentPos.x, currentPos.y, currentConfig.PCB_Z_UP);
+                    await printerController.moveZOnly(currentConfig.PCB_Z_UP);
                     await printerController.waitForMovement();
                     // Wait again after forced correction
                     await new Promise(resolve => setTimeout(resolve, 2000));
