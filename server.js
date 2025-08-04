@@ -213,9 +213,11 @@ class PrinterController {
         if (isZOnly) {
             // Z-only movement - use Z speed
             command += ` F${currentConfig.PRINTER_SPEED_Z || 500}`;
+            sendLogToClients({ type: 'info', message: `🔧 Sending Z-only movement command: ${command}` });
         } else if (!isZOnly) {
             // XY movement (with or without Z) - use XY speed
             command += ` F${currentConfig.PRINTER_SPEED_XY || 3000}`;
+            sendLogToClients({ type: 'info', message: `🔧 Sending movement command: ${command}` });
         }
         
         await this.sendCommand(command);
@@ -823,10 +825,14 @@ async function testPrinterMovement() {
                 
                 sendLogToClients({ type: 'success', message: `✅ Position ${currentPCB}/${totalPCBs} completed (simulated programming)` });
                 
-                // Raise Z back to safe height and go directly home
-                sendLogToClients({ type: 'info', message: `⬆️ Raising to safe height Z${currentConfig.PCB_Z_UP} and going home...` });
+                // Raise Z back to safe height FIRST (before any XY movement)
+                sendLogToClients({ type: 'info', message: `⬆️ Raising Z to safe height Z${currentConfig.PCB_Z_UP} (Z-only movement)...` });
                 await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
                 await printerController.waitForMovement();
+                
+                // Additional wait to ensure Z movement completes
+                sendLogToClients({ type: 'info', message: `⏳ Waiting for Z movement to complete...` });
+                await new Promise(resolve => setTimeout(resolve, 2000));
                 
                 // Verify Z height before moving home
                 try {
@@ -839,13 +845,17 @@ async function testPrinterMovement() {
                         sendLogToClients({ type: 'info', message: `🔄 Forcing Z to safe height Z${currentConfig.PCB_Z_UP}...` });
                         await printerController.moveTo(currentPos.x, currentPos.y, currentConfig.PCB_Z_UP);
                         await printerController.waitForMovement();
+                        // Wait again after forced correction
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                    } else {
+                        sendLogToClients({ type: 'success', message: `✅ Z height verified at Z${currentPos.z} (within 1mm of target Z${currentConfig.PCB_Z_UP})` });
                     }
                 } catch (posError) {
                     sendLogToClients({ type: 'warning', message: `⚠️ Could not verify position: ${posError.message}` });
                 }
                 
-                // Go directly home while maintaining safe Z height
-                sendLogToClients({ type: 'info', message: '🏠 Going directly home while maintaining safe Z height...' });
+                // Now go home while maintaining safe Z height
+                sendLogToClients({ type: 'info', message: `🏠 Moving home while maintaining safe Z height Z${currentConfig.PCB_Z_UP}...` });
                 await printerController.moveTo(0, 0, currentConfig.PCB_Z_UP);
                 await printerController.waitForMovement();
                 
@@ -956,10 +966,14 @@ async function testIndividualPCBPoint(pointIndex) {
             
             sendLogToClients({ type: 'success', message: `✅ PCB Point ${pointIndex + 1} completed (simulated programming)` });
             
-            // Raise Z back to safe height and go directly home
-            sendLogToClients({ type: 'info', message: `⬆️ Raising to safe height Z${currentConfig.PCB_Z_UP} and going home...` });
+            // Raise Z back to safe height FIRST (before any XY movement)
+            sendLogToClients({ type: 'info', message: `⬆️ Raising Z to safe height Z${currentConfig.PCB_Z_UP} (Z-only movement)...` });
             await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
             await printerController.waitForMovement();
+            
+            // Additional wait to ensure Z movement completes
+            sendLogToClients({ type: 'info', message: `⏳ Waiting for Z movement to complete...` });
+            await new Promise(resolve => setTimeout(resolve, 2000));
             
             // Verify Z height before moving home
             try {
@@ -972,13 +986,17 @@ async function testIndividualPCBPoint(pointIndex) {
                     sendLogToClients({ type: 'info', message: `🔄 Forcing Z to safe height Z${currentConfig.PCB_Z_UP}...` });
                     await printerController.moveTo(currentPos.x, currentPos.y, currentConfig.PCB_Z_UP);
                     await printerController.waitForMovement();
+                    // Wait again after forced correction
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                } else {
+                    sendLogToClients({ type: 'success', message: `✅ Z height verified at Z${currentPos.z} (within 1mm of target Z${currentConfig.PCB_Z_UP})` });
                 }
             } catch (posError) {
                 sendLogToClients({ type: 'warning', message: `⚠️ Could not verify position: ${posError.message}` });
             }
             
-            // Go directly home while maintaining safe Z height
-            sendLogToClients({ type: 'info', message: '🏠 Going directly home while maintaining safe Z height...' });
+            // Now go home while maintaining safe Z height
+            sendLogToClients({ type: 'info', message: `🏠 Moving home while maintaining safe Z height Z${currentConfig.PCB_Z_UP}...` });
             await printerController.moveTo(0, 0, currentConfig.PCB_Z_UP);
             await printerController.waitForMovement();
             
