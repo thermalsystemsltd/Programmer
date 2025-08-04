@@ -828,9 +828,9 @@ async function testPrinterMovement() {
                 await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
                 await printerController.waitForMovement();
                 
-                // Go directly home from current position
-                sendLogToClients({ type: 'info', message: '🏠 Going directly home...' });
-                await printerController.home();
+                // Go directly home while maintaining safe Z height
+                sendLogToClients({ type: 'info', message: '🏠 Going directly home while maintaining safe Z height...' });
+                await printerController.moveTo(0, 0, currentConfig.PCB_Z_UP);
                 await printerController.waitForMovement();
                 
                 // Small delay between positions
@@ -945,9 +945,9 @@ async function testIndividualPCBPoint(pointIndex) {
             await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
             await printerController.waitForMovement();
             
-            // Go directly home from current position
-            sendLogToClients({ type: 'info', message: '🏠 Going directly home...' });
-            await printerController.home();
+            // Go directly home while maintaining safe Z height
+            sendLogToClients({ type: 'info', message: '🏠 Going directly home while maintaining safe Z height...' });
+            await printerController.moveTo(0, 0, currentConfig.PCB_Z_UP);
             await printerController.waitForMovement();
             
             // Final summary
