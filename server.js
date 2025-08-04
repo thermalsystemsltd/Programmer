@@ -232,8 +232,48 @@ class PrinterController {
     }
 
     async getPosition() {
-        await this.sendCommand('M114');
-        return this.currentPosition;
+        return new Promise((resolve, reject) => {
+            if (!this.isConnected) {
+                reject(new Error('Printer not connected'));
+                return;
+            }
+
+            const timeout = setTimeout(() => {
+                reject(new Error('Position query timeout'));
+            }, 5000);
+
+            // Create a one-time listener for the position response
+            const onData = (data) => {
+                const response = data.toString().trim();
+                console.log(`📡 Position response: ${response}`);
+                
+                // Parse M114 response: "X:123.45 Y:67.89 Z:10.12 E:0.00"
+                const match = response.match(/X:([-\d.]+)\s+Y:([-\d.]+)\s+Z:([-\d.]+)/);
+                if (match) {
+                    clearTimeout(timeout);
+                    this.port.removeListener('data', onData);
+                    
+                    const x = parseFloat(match[1]);
+                    const y = parseFloat(match[2]);
+                    const z = parseFloat(match[3]);
+                    
+                    this.currentPosition = { x, y, z };
+                    resolve(this.currentPosition);
+                }
+            };
+
+            // Add our listener
+            this.port.on('data', onData);
+            
+            // Send the position query command
+            this.port.write('M114\n', (error) => {
+                if (error) {
+                    clearTimeout(timeout);
+                    this.port.removeListener('data', onData);
+                    reject(error);
+                }
+            });
+        });
     }
 }
 
@@ -1608,6 +1648,12 @@ app.post('/api/printer/save-pcb-location', async (req, res) => {
         await ensurePrinterConnection();
         const currentPosition = await printerController.getPosition();
         
+        console.log(`📍 Current printer position: X${currentPosition.x} Y${currentPosition.y} Z${currentPosition.z}`);
+        sendLogToClients({ 
+            type: 'info', 
+            message: `📍 Current printer position: X${currentPosition.x} Y${currentPosition.y} Z${currentPosition.z}` 
+        });
+        
         // Load current config
         const currentConfig = loadConfig();
         
@@ -1622,24 +1668,55 @@ app.post('/api/printer/save-pcb-location', async (req, res) => {
         }
         
         // Update the specific point
-        currentConfig.PCB_POINTS[pointIndex] = {
+        const newPosition = {
             x: parseFloat(currentPosition.x.toFixed(2)),
             y: parseFloat(currentPosition.y.toFixed(2))
         };
         
-        // Save the updated config
-        saveConfig(currentConfig);
-        
-        sendLogToClients({ 
-            type: 'success', 
-            message: `✅ PCB Point ${pointIndex + 1} location saved: X${currentConfig.PCB_POINTS[pointIndex].x} Y${currentConfig.PCB_POINTS[pointIndex].y}` 
+        console.log(`💾 Updating PCB Point ${pointIndex + 1}:`, {
+            old: currentConfig.PCB_POINTS[pointIndex],
+            new: newPosition
         });
+        
+        currentConfig.PCB_POINTS[pointIndex] = newPosition;
+        
+        // Save the updated config
+        const saveResult = saveConfig(currentConfig);
+        console.log(`💾 Save config result: ${saveResult}`);
+        
+        if (saveResult) {
+            // Reload the global currentConfig to ensure it's up to date
+            currentConfig = loadConfig();
+            
+            sendLogToClients({ 
+                type: 'success', 
+                message: `✅ PCB Point ${pointIndex + 1} location saved: X${currentConfig.PCB_POINTS[pointIndex].x} Y${currentConfig.PCB_POINTS[pointIndex].y}` 
+            });
+        } else {
+            throw new Error('Failed to save configuration to file');
+        }
         
         res.json({
             success: true,
             message: `PCB Point ${pointIndex + 1} location saved`,
             savedPosition: currentConfig.PCB_POINTS[pointIndex],
             position: currentPosition
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// Test endpoint to check current PCB points
+app.get('/api/test-pcb-points', (req, res) => {
+    try {
+        res.json({
+            success: true,
+            pcbPoints: currentConfig.PCB_POINTS,
+            configFile: loadConfig().PCB_POINTS
         });
     } catch (error) {
         res.status(500).json({

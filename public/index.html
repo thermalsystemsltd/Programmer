@@ -1554,6 +1554,7 @@
                 if (data.success) {
                     addLog(`✅ PCB Point ${pointIndex + 1} location saved successfully!`, 'success', 'printerLog');
                     addLog(`Saved position: X${data.savedPosition.x} Y${data.savedPosition.y}`, 'info', 'printerLog');
+                    console.log(`💾 Frontend: PCB Point ${pointIndex + 1} saved with position:`, data.savedPosition);
                     
                     // Update the configuration display
                     updatePcbPointsDisplay();
@@ -1648,8 +1649,10 @@
         // Update PCB points display in configuration
         function updatePcbPointsDisplay() {
             // This function will be called after saving a location to refresh the display
-            // For now, we'll just reload the configuration
+            console.log('🔄 Updating PCB points display...');
             loadConfiguration();
+            // Also regenerate the individual PCB buttons
+            generateIndividualPcbButtons();
         }
 
         // Toggle log expansion
