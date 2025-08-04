@@ -828,6 +828,22 @@ async function testPrinterMovement() {
                 await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
                 await printerController.waitForMovement();
                 
+                // Verify Z height before moving home
+                try {
+                    const currentPos = await printerController.getPosition();
+                    sendLogToClients({ type: 'info', message: `📍 Current position before home: X${currentPos.x} Y${currentPos.y} Z${currentPos.z}` });
+                    
+                    if (Math.abs(currentPos.z - currentConfig.PCB_Z_UP) > 1) {
+                        sendLogToClients({ type: 'warning', message: `⚠️ Z height mismatch! Expected Z${currentConfig.PCB_Z_UP}, but printer reports Z${currentPos.z}` });
+                        // Force Z to safe height before moving home
+                        sendLogToClients({ type: 'info', message: `🔄 Forcing Z to safe height Z${currentConfig.PCB_Z_UP}...` });
+                        await printerController.moveTo(currentPos.x, currentPos.y, currentConfig.PCB_Z_UP);
+                        await printerController.waitForMovement();
+                    }
+                } catch (posError) {
+                    sendLogToClients({ type: 'warning', message: `⚠️ Could not verify position: ${posError.message}` });
+                }
+                
                 // Go directly home while maintaining safe Z height
                 sendLogToClients({ type: 'info', message: '🏠 Going directly home while maintaining safe Z height...' });
                 await printerController.moveTo(0, 0, currentConfig.PCB_Z_UP);
@@ -944,6 +960,22 @@ async function testIndividualPCBPoint(pointIndex) {
             sendLogToClients({ type: 'info', message: `⬆️ Raising to safe height Z${currentConfig.PCB_Z_UP} and going home...` });
             await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
             await printerController.waitForMovement();
+            
+            // Verify Z height before moving home
+            try {
+                const currentPos = await printerController.getPosition();
+                sendLogToClients({ type: 'info', message: `📍 Current position before home: X${currentPos.x} Y${currentPos.y} Z${currentPos.z}` });
+                
+                if (Math.abs(currentPos.z - currentConfig.PCB_Z_UP) > 1) {
+                    sendLogToClients({ type: 'warning', message: `⚠️ Z height mismatch! Expected Z${currentConfig.PCB_Z_UP}, but printer reports Z${currentPos.z}` });
+                    // Force Z to safe height before moving home
+                    sendLogToClients({ type: 'info', message: `🔄 Forcing Z to safe height Z${currentConfig.PCB_Z_UP}...` });
+                    await printerController.moveTo(currentPos.x, currentPos.y, currentConfig.PCB_Z_UP);
+                    await printerController.waitForMovement();
+                }
+            } catch (posError) {
+                sendLogToClients({ type: 'warning', message: `⚠️ Could not verify position: ${posError.message}` });
+            }
             
             // Go directly home while maintaining safe Z height
             sendLogToClients({ type: 'info', message: '🏠 Going directly home while maintaining safe Z height...' });
