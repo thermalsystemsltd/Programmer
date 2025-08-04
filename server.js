@@ -225,8 +225,8 @@ class PrinterController {
         }
         
         await this.sendCommand(command);
-        this.currentPosition = { x, y, z: z || this.currentPosition.z };
-        sendLogToClients({ type: 'info', message: `📍 Moved to X${x} Y${y} Z${z || this.currentPosition.z}` });
+        this.currentPosition = { x, y, z: z !== null ? z : this.currentPosition.z };
+        sendLogToClients({ type: 'info', message: `📍 Moved to X${x} Y${y} Z${z !== null ? z : this.currentPosition.z}` });
     }
 
     async moveRelative(axis, distance) {
