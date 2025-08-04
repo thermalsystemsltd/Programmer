@@ -1250,10 +1250,10 @@
 
         async function updatePosition() {
             try {
-                const response = await fetch('/api/printer/status');
+                const response = await fetch('/api/printer/position');
                 const data = await response.json();
                 
-                if (data.success && data.connected) {
+                if (data.success) {
                     document.getElementById('currentX').textContent = data.position.x.toFixed(1);
                     document.getElementById('currentY').textContent = data.position.y.toFixed(1);
                     document.getElementById('currentZ').textContent = data.position.z.toFixed(1);

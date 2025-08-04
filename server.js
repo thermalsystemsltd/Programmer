@@ -187,6 +187,28 @@ class PrinterController {
         });
     }
 
+    // Fast command sending - minimal logging for manual movements
+    async sendCommandFast(command) {
+        return new Promise((resolve, reject) => {
+            if (!this.isConnected) {
+                reject(new Error('Printer not connected'));
+                return;
+            }
+
+            // Only log to console, not to clients for speed
+            console.log(`📡 Fast G-code: ${command}`);
+
+            this.port.write(command + '\n', (error) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    // Reduced wait time for manual movements
+                    setTimeout(() => resolve(), 50);
+                }
+            });
+        });
+    }
+
     async home() {
         await this.sendCommand('G28');
         this.isHomed = true;
@@ -249,6 +271,51 @@ class PrinterController {
         }
         
         await this.moveTo(newX, newY, newZ);
+    }
+
+    // Fast manual movement - minimal logging for responsiveness
+    async moveRelativeFast(axis, distance) {
+        let newX = this.currentPosition.x;
+        let newY = this.currentPosition.y;
+        let newZ = this.currentPosition.z;
+        
+        switch (axis.toUpperCase()) {
+            case 'X':
+                newX += distance;
+                break;
+            case 'Y':
+                newY += distance;
+                break;
+            case 'Z':
+                newZ += distance;
+                break;
+            default:
+                throw new Error(`Invalid axis: ${axis}. Use X, Y, or Z.`);
+        }
+        
+        // Determine if this is a Z-only move, XY move, or combined move
+        let isZOnly = (newX === this.currentPosition.x && newY === this.currentPosition.y && newZ !== this.currentPosition.z);
+        
+        let command = `G0`;
+        
+        // Add coordinates
+        if (newX !== this.currentPosition.x || newY !== this.currentPosition.y) {
+            command += ` X${newX} Y${newY}`;
+        }
+        if (newZ !== this.currentPosition.z) {
+            command += ` Z${newZ}`;
+        }
+        
+        // Add appropriate speed based on movement type
+        if (isZOnly) {
+            command += ` F${currentConfig.PRINTER_SPEED_Z || 500}`;
+        } else {
+            command += ` F${currentConfig.PRINTER_SPEED_XY || 3000}`;
+        }
+        
+        // Send command without extensive logging
+        await this.sendCommandFast(command);
+        this.currentPosition = { x: newX, y: newY, z: newZ };
     }
 
     async moveZOnly(targetZ) {
@@ -1684,6 +1751,21 @@ app.get('/api/printer/status', async (req, res) => {
     }
 });
 
+// Fast position endpoint - uses internal tracking without querying printer
+app.get('/api/printer/position', async (req, res) => {
+    try {
+        res.json({
+            success: true,
+            position: printerController.currentPosition
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 // Manual movement controls
 app.post('/api/printer/move-relative', async (req, res) => {
     try {
@@ -1704,15 +1786,16 @@ app.post('/api/printer/move-relative', async (req, res) => {
         }
         
         await ensurePrinterConnection();
-        await printerController.moveRelative(axis, parseFloat(distance));
-        await printerController.waitForMovement();
+        await printerController.moveRelativeFast(axis, parseFloat(distance));
         
-        const newPosition = await printerController.getPosition();
+        // For manual movement, don't wait for completion or get position
+        // This makes the controls much more responsive
+        // The position will be updated in the internal tracking
         
         res.json({
             success: true,
-            message: `Moved ${axis.toUpperCase()} by ${distance}mm`,
-            position: newPosition
+            message: `Moving ${axis.toUpperCase()} by ${distance}mm`,
+            position: printerController.currentPosition
         });
     } catch (error) {
         res.status(500).json({
