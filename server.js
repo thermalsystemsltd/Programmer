@@ -263,12 +263,18 @@ const DEFAULT_CONFIG = {
     BAUD_RATE: '115200',
     PRINTER_COM_PORT: process.platform === 'win32' ? 'COM6' : '/dev/ttyUSB0',
     PRINTER_BAUD_RATE: '115200',
-    PCB_GRID_X: 30,  // mm between PCBs horizontally
-    PCB_GRID_Y: 110, // mm between PCBs vertically
-    PCB_ROWS: 2,     // number of rows
-    PCB_COLS: 5,     // number of columns per row
-    PCB_START_X: 0,  // X position of first PCB
-    PCB_START_Y: 0,  // Y position of first PCB
+    PCB_POINTS: [
+        {"x": 39, "y": 70},
+        {"x": 64, "y": 70},
+        {"x": 89, "y": 70},
+        {"x": 114, "y": 70},
+        {"x": 139, "y": 70},
+        {"x": 39, "y": 175},
+        {"x": 64, "y": 175},
+        {"x": 89, "y": 175},
+        {"x": 114, "y": 175},
+        {"x": 139, "y": 175}
+    ],
     PCB_Z_UP: 10,    // Z height when moving between PCBs
     PCB_Z_DOWN: 0    // Z height when programming PCBs
 };
@@ -701,66 +707,91 @@ async function testPrinterMovement() {
             await printerController.moveTo(0, 0, currentConfig.PCB_Z_UP);
             await printerController.waitForMovement();
             
-            let totalPCBs = currentConfig.PCB_ROWS * currentConfig.PCB_COLS;
-            let currentPCB = 0;
-            
-            sendLogToClients({ type: 'info', message: `🎯 Starting test movement: ${currentConfig.PCB_ROWS} rows × ${currentConfig.PCB_COLS} columns = ${totalPCBs} positions` });
-            
-            for (let row = 0; row < currentConfig.PCB_ROWS; row++) {
-                for (let col = 0; col < currentConfig.PCB_COLS; col++) {
-                    currentPCB++;
-                    
-                    // Calculate position relative to start position
-                    const x = currentConfig.PCB_START_X + (col * currentConfig.PCB_GRID_X);
-                    const y = currentConfig.PCB_START_Y + (row * currentConfig.PCB_GRID_Y);
-                    
-                    sendLogToClients({ type: 'info', message: `🎯 Moving to position ${currentPCB}/${totalPCBs} at (${col}, ${row}) - X${x} Y${y}` });
-                    
-                    // Move to PCB position at safe Z height
-                    sendLogToClients({ type: 'info', message: `📍 Moving to position X${x} Y${y} Z${currentConfig.PCB_Z_UP}` });
-                    await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
-                    await printerController.waitForMovement();
-                    
-                    // Add longer pause for first and second positions
-                    let pauseTime = 1000; // Default 1 second
-                    if (currentPCB === 1) {
-                        pauseTime = 5000; // 5 seconds for first position
-                        sendLogToClients({ type: 'info', message: `⏸️ Extended pause at first position (5 seconds)...` });
-                    } else if (currentPCB === 2) {
-                        pauseTime = 5000; // 5 seconds for second position
-                        sendLogToClients({ type: 'info', message: `⏸️ Extended pause at second position (5 seconds)...` });
-                    }
-                    
-                    // Small delay to ensure stable position
-                    await new Promise(resolve => setTimeout(resolve, pauseTime));
-                    
-                    // Lower Z to programming height (simulated)
-                    sendLogToClients({ type: 'info', message: `⬇️ Lowering to programming height Z${currentConfig.PCB_Z_DOWN} (simulated)` });
-                    await printerController.moveTo(x, y, currentConfig.PCB_Z_DOWN);
-                    await printerController.waitForMovement();
-                    
-                    // Simulate programming delay
-                    sendLogToClients({ type: 'info', message: `⏳ Simulating programming delay for PCB ${currentPCB}/${totalPCBs}...` });
-                    await new Promise(resolve => setTimeout(resolve, 3000)); // 3 second delay
-                    
-                    sendLogToClients({ type: 'success', message: `✅ Position ${currentPCB}/${totalPCBs} completed (simulated programming)` });
-                    
-                    // Raise Z back to safe height
-                    sendLogToClients({ type: 'info', message: `⬆️ Raising to safe height Z${currentConfig.PCB_Z_UP}` });
-                    await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
-                    await printerController.waitForMovement();
-                    
-                    // Small delay between positions
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                }
+            // Check if PCB_POINTS array exists, otherwise fall back to grid system
+            if (!currentConfig.PCB_POINTS || !Array.isArray(currentConfig.PCB_POINTS)) {
+                sendLogToClients({ type: 'error', message: '❌ PCB_POINTS array not found in configuration. Please update your config.json to use the new PCB points format.' });
+                reject(new Error('PCB_POINTS array not found in configuration'));
+                return;
             }
             
-            // Return to home position
-            sendLogToClients({ type: 'info', message: '🏠 Returning to home position...' });
-            await printerController.moveTo(0, 0, currentConfig.PCB_Z_UP);
+            let totalPCBs = currentConfig.PCB_POINTS.length;
+            let currentPCB = 0;
+            let visitedPositions = []; // Track all visited positions for debugging
+            
+            sendLogToClients({ type: 'info', message: `🎯 Starting test movement: ${totalPCBs} PCB points defined` });
+            
+            for (let i = 0; i < currentConfig.PCB_POINTS.length; i++) {
+                currentPCB++;
+                const point = currentConfig.PCB_POINTS[i];
+                const x = point.x;
+                const y = point.y;
+                
+                // Track this position
+                visitedPositions.push({ position: currentPCB, pointIndex: i, x, y });
+                
+                sendLogToClients({ type: 'info', message: `🎯 Moving to position ${currentPCB}/${totalPCBs} (Point ${i + 1}) - X${x} Y${y}` });
+                
+                // Enhanced logging for last two positions to help debug
+                if (currentPCB >= totalPCBs - 1) {
+                    sendLogToClients({ type: 'warning', message: `🔍 DEBUG: Processing position ${currentPCB}/${totalPCBs} - Point Index: ${i}, X: ${x}, Y: ${y}` });
+                }
+                
+                // Move to PCB position at safe Z height
+                sendLogToClients({ type: 'info', message: `📍 Moving to position X${x} Y${y} Z${currentConfig.PCB_Z_UP}` });
+                await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
+                await printerController.waitForMovement();
+                
+                // Add longer pause for first and second positions
+                let pauseTime = 1000; // Default 1 second
+                if (currentPCB === 1) {
+                    pauseTime = 5000; // 5 seconds for first position
+                    sendLogToClients({ type: 'info', message: `⏸️ Extended pause at first position (5 seconds)...` });
+                } else if (currentPCB === 2) {
+                    pauseTime = 5000; // 5 seconds for second position
+                    sendLogToClients({ type: 'info', message: `⏸️ Extended pause at second position (5 seconds)...` });
+                }
+                
+                // Small delay to ensure stable position
+                await new Promise(resolve => setTimeout(resolve, pauseTime));
+                
+                // Lower Z to programming height (simulated)
+                sendLogToClients({ type: 'info', message: `⬇️ Lowering to programming height Z${currentConfig.PCB_Z_DOWN} (simulated)` });
+                await printerController.moveTo(x, y, currentConfig.PCB_Z_DOWN);
+                await printerController.waitForMovement();
+                
+                // Simulate programming delay
+                sendLogToClients({ type: 'info', message: `⏳ Simulating programming delay for PCB ${currentPCB}/${totalPCBs}...` });
+                await new Promise(resolve => setTimeout(resolve, 3000)); // 3 second delay
+                
+                sendLogToClients({ type: 'success', message: `✅ Position ${currentPCB}/${totalPCBs} completed (simulated programming)` });
+                
+                // Raise Z back to safe height
+                sendLogToClients({ type: 'info', message: `⬆️ Raising to safe height Z${currentConfig.PCB_Z_UP}` });
+                await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
+                await printerController.waitForMovement();
+                
+                // Small delay between positions
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            
+            // Move to safe Z height before homing
+            const safeZHeight = Math.max(currentConfig.PCB_Z_UP + 10, 50); // At least 10mm above PCB_Z_UP or 50mm minimum
+            sendLogToClients({ type: 'info', message: `⬆️ Moving to safe Z height (${safeZHeight}mm) before homing...` });
+            await printerController.moveTo(0, 0, safeZHeight);
             await printerController.waitForMovement();
             
+            // Return to home position at safe height
+            sendLogToClients({ type: 'info', message: '🏠 Returning to home position at safe height...' });
+            await printerController.moveTo(0, 0, safeZHeight);
+            await printerController.waitForMovement();
+            
+            // Final summary with all positions visited
             sendLogToClients({ type: 'big-success', message: `🎉 Test Movement Complete! ${totalPCBs} positions visited` });
+            sendLogToClients({ type: 'info', message: `📋 Summary: Visited ${totalPCBs} PCB points defined in configuration` });
+            sendLogToClients({ type: 'info', message: `📍 PCB Points: ${currentConfig.PCB_POINTS.length} points with individual X,Y coordinates` });
+            
+            // Debug: Show all visited positions
+            sendLogToClients({ type: 'info', message: `🔍 DEBUG: All visited positions: ${JSON.stringify(visitedPositions)}` });
             resolve();
             
         } catch (error) {
@@ -771,6 +802,122 @@ async function testPrinterMovement() {
             // Don't disconnect if we were already connected before
             if (printerConnected && !wasAlreadyConnected) {
                 sendLogToClients({ type: 'info', message: '🔌 Disconnecting printer after test (was connected for test only)' });
+                await printerController.disconnect();
+            } else if (wasAlreadyConnected) {
+                sendLogToClients({ type: 'info', message: '✅ Keeping printer connected (was already connected)' });
+            }
+        }
+    });
+}
+
+// Function to test individual PCB point
+async function testIndividualPCBPoint(pointIndex) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            let printerConnected = false;
+            
+            // Check if already connected
+            let wasAlreadyConnected = printerController.isConnected;
+            if (wasAlreadyConnected) {
+                sendLogToClients({ type: 'info', message: '✅ Using existing printer connection for individual PCB test...' });
+                printerConnected = true;
+            } else {
+                // Try to connect to 3D printer
+                sendLogToClients({ type: 'info', message: '🔌 Attempting to connect to 3D printer for individual PCB test...' });
+                
+                try {
+                    await printerController.connect(currentConfig.PRINTER_COM_PORT, currentConfig.PRINTER_BAUD_RATE);
+                    printerConnected = true;
+                } catch (printerError) {
+                    sendLogToClients({ type: 'error', message: `❌ 3D Printer connection failed: ${printerError.message}` });
+                    reject(printerError);
+                    return;
+                }
+            }
+            
+            // Validate point index
+            if (!currentConfig.PCB_POINTS || !Array.isArray(currentConfig.PCB_POINTS)) {
+                sendLogToClients({ type: 'error', message: '❌ PCB_POINTS array not found in configuration. Please update your config.json to use the new PCB points format.' });
+                reject(new Error('PCB_POINTS array not found in configuration'));
+                return;
+            }
+            
+            if (pointIndex < 0 || pointIndex >= currentConfig.PCB_POINTS.length) {
+                sendLogToClients({ type: 'error', message: `❌ Invalid point index: ${pointIndex}. Valid range is 0-${currentConfig.PCB_POINTS.length - 1}` });
+                reject(new Error(`Invalid point index: ${pointIndex}`));
+                return;
+            }
+            
+            const point = currentConfig.PCB_POINTS[pointIndex];
+            const x = point.x;
+            const y = point.y;
+            
+            sendLogToClients({ type: 'info', message: `🎯 Starting individual PCB test for Point ${pointIndex + 1} (index ${pointIndex}) at X${x} Y${y}` });
+            
+            // Only home if not already homed
+            if (!printerController.isHomed) {
+                sendLogToClients({ type: 'info', message: '🏠 Homing 3D printer...' });
+                await printerController.home();
+                await printerController.waitForMovement();
+            } else {
+                sendLogToClients({ type: 'info', message: '✅ Printer already homed, skipping home command...' });
+            }
+            
+            // Move to safe Z height
+            sendLogToClients({ type: 'info', message: `⬆️ Moving to safe Z height: ${currentConfig.PCB_Z_UP}mm` });
+            await printerController.moveTo(0, 0, currentConfig.PCB_Z_UP);
+            await printerController.waitForMovement();
+            
+            // Move to PCB position at safe Z height
+            sendLogToClients({ type: 'info', message: `📍 Moving to PCB Point ${pointIndex + 1} at X${x} Y${y} Z${currentConfig.PCB_Z_UP}` });
+            await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
+            await printerController.waitForMovement();
+            
+            // Extended pause for individual test
+            sendLogToClients({ type: 'info', message: `⏸️ Pause at PCB Point ${pointIndex + 1} (3 seconds)...` });
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
+            // Lower Z to programming height (simulated)
+            sendLogToClients({ type: 'info', message: `⬇️ Lowering to programming height Z${currentConfig.PCB_Z_DOWN} (simulated)` });
+            await printerController.moveTo(x, y, currentConfig.PCB_Z_DOWN);
+            await printerController.waitForMovement();
+            
+            // Simulate programming delay
+            sendLogToClients({ type: 'info', message: `⏳ Simulating programming delay for PCB Point ${pointIndex + 1}...` });
+            await new Promise(resolve => setTimeout(resolve, 3000)); // 3 second delay
+            
+            sendLogToClients({ type: 'success', message: `✅ PCB Point ${pointIndex + 1} completed (simulated programming)` });
+            
+            // Raise Z back to safe height
+            sendLogToClients({ type: 'info', message: `⬆️ Raising to safe height Z${currentConfig.PCB_Z_UP}` });
+            await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
+            await printerController.waitForMovement();
+            
+            // Move to safe Z height before homing
+            const safeZHeight = Math.max(currentConfig.PCB_Z_UP + 10, 50); // At least 10mm above PCB_Z_UP or 50mm minimum
+            sendLogToClients({ type: 'info', message: `⬆️ Moving to safe Z height (${safeZHeight}mm) before homing...` });
+            await printerController.moveTo(0, 0, safeZHeight);
+            await printerController.waitForMovement();
+            
+            // Return to home position at safe height
+            sendLogToClients({ type: 'info', message: '🏠 Returning to home position at safe height...' });
+            await printerController.moveTo(0, 0, safeZHeight);
+            await printerController.waitForMovement();
+            
+            // Final summary
+            sendLogToClients({ type: 'big-success', message: `🎉 Individual PCB Test Complete! Point ${pointIndex + 1} at X${x} Y${y}` });
+            sendLogToClients({ type: 'info', message: `📋 Summary: Tested PCB Point ${pointIndex + 1} (index ${pointIndex})` });
+            
+            resolve();
+            
+        } catch (error) {
+            sendLogToClients({ type: 'error', message: `❌ Individual PCB Test failed: ${error.message}` });
+            reject(error);
+        } finally {
+            // Only disconnect if we connected specifically for this test
+            // Don't disconnect if we were already connected before
+            if (printerConnected && !wasAlreadyConnected) {
+                sendLogToClients({ type: 'info', message: '🔌 Disconnecting printer after individual test (was connected for test only)' });
                 await printerController.disconnect();
             } else if (wasAlreadyConnected) {
                 sendLogToClients({ type: 'info', message: '✅ Keeping printer connected (was already connected)' });
@@ -1021,7 +1168,7 @@ app.get('/api/config', (req, res) => {
 
 app.post('/api/config', (req, res) => {
     try {
-        const { webhookUrl, successWebhookUrl, arduinoSketchPath, serialLineNumber, comPort, baudRate, printerComPort, printerBaudRate, pcbGridX, pcbGridY, pcbRows, pcbCols, pcbStartX, pcbStartY, pcbZUp, pcbZDown } = req.body;
+        const { webhookUrl, successWebhookUrl, arduinoSketchPath, serialLineNumber, comPort, baudRate, printerComPort, printerBaudRate, pcbPoints, pcbZUp, pcbZDown } = req.body;
         
         // Update configuration
         if (webhookUrl) currentConfig.WEBHOOK_URL = webhookUrl;
@@ -1032,12 +1179,7 @@ app.post('/api/config', (req, res) => {
         if (baudRate) currentConfig.BAUD_RATE = baudRate;
         if (printerComPort) currentConfig.PRINTER_COM_PORT = printerComPort;
         if (printerBaudRate) currentConfig.PRINTER_BAUD_RATE = printerBaudRate;
-        if (pcbGridX) currentConfig.PCB_GRID_X = parseFloat(pcbGridX);
-        if (pcbGridY) currentConfig.PCB_GRID_Y = parseFloat(pcbGridY);
-        if (pcbRows) currentConfig.PCB_ROWS = parseInt(pcbRows);
-        if (pcbCols) currentConfig.PCB_COLS = parseInt(pcbCols);
-        if (pcbStartX) currentConfig.PCB_START_X = parseFloat(pcbStartX);
-        if (pcbStartY) currentConfig.PCB_START_Y = parseFloat(pcbStartY);
+        if (pcbPoints && Array.isArray(pcbPoints)) currentConfig.PCB_POINTS = pcbPoints;
         if (pcbZUp) currentConfig.PCB_Z_UP = parseFloat(pcbZUp);
         if (pcbZDown) currentConfig.PCB_Z_DOWN = parseFloat(pcbZDown);
         
@@ -1376,6 +1518,28 @@ app.post('/api/printer/test-movement', async (req, res) => {
         res.json({
             success: true,
             message: 'Test printer movement started'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+app.post('/api/printer/test-individual-point', async (req, res) => {
+    try {
+        const { pointIndex } = req.body;
+        if (pointIndex === undefined || pointIndex < 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'Point index is required and must be a non-negative integer'
+            });
+        }
+        await testIndividualPCBPoint(pointIndex);
+        res.json({
+            success: true,
+            message: `Individual PCB point test started for point index ${pointIndex}`
         });
     } catch (error) {
         res.status(500).json({

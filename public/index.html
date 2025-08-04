@@ -494,34 +494,17 @@
                         </div>
                     </div>
                     
-                    <div class="configuration-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div class="configuration-grid" style="display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 15px;">
                         <div>
-                            <label for="configPcbGridX" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">PCB X Spacing (mm):</label>
-                            <input type="number" id="configPcbGridX" value="30" style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px;">
-                        </div>
-                        <div>
-                            <label for="configPcbGridY" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">PCB Y Spacing (mm):</label>
-                            <input type="number" id="configPcbGridY" value="110" style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px;">
-                        </div>
-                        <div>
-                            <label for="configPcbRows" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">PCB Rows:</label>
-                            <input type="number" id="configPcbRows" value="2" style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px;">
-                        </div>
-                        <div>
-                            <label for="configPcbCols" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">PCB Columns:</label>
-                            <input type="number" id="configPcbCols" value="5" style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px;">
+                            <label for="configPcbPoints" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">PCB Points (JSON Array):</label>
+                            <textarea id="configPcbPoints" rows="6" style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px; font-family: monospace; font-size: 0.9rem;" placeholder='[{"x": 39, "y": 70}, {"x": 64, "y": 70}, ...]'></textarea>
+                            <p style="font-size: 0.8rem; color: #666; margin-top: 5px;">
+                                Array of X,Y coordinates for each PCB point. Example: [{"x": 39, "y": 70}, {"x": 64, "y": 70}]
+                            </p>
                         </div>
                     </div>
                     
-                    <div class="configuration-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                        <div>
-                            <label for="configPcbStartX" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">First PCB X (mm):</label>
-                            <input type="number" id="configPcbStartX" value="0" style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px;">
-                        </div>
-                        <div>
-                            <label for="configPcbStartY" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">First PCB Y (mm):</label>
-                            <input type="number" id="configPcbStartY" value="0" style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px;">
-                        </div>
+                    <div class="configuration-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                         <div>
                             <label for="configPcbZUp" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">Z Safe Height (mm):</label>
                             <input type="number" id="configPcbZUp" value="10" style="width: 100%; padding: 10px; border: 2px solid #e9ecef; border-radius: 8px;">
@@ -653,6 +636,19 @@
                         </button>
                         <p style="font-size: 0.8rem; color: #666; margin-top: 5px;">
                             Moves to PCB positions with simulated programming delays
+                        </p>
+                    </div>
+                    
+                    <!-- Individual PCB Test Buttons -->
+                    <div style="margin-bottom: 15px;">
+                        <h4 style="margin-bottom: 10px; color: #2c3e50; text-align: center;">
+                            <i class="fas fa-crosshairs"></i> Individual PCB Test Buttons
+                        </h4>
+                        <div id="individualPcbButtons" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
+                            <!-- Buttons will be generated dynamically -->
+                        </div>
+                        <p style="font-size: 0.8rem; color: #666; margin-top: 5px; text-align: center;">
+                            Test individual PCB points with simulated programming
                         </p>
                     </div>
                 </div>
@@ -788,18 +784,35 @@
                 document.getElementById('configBaudRate').value = config.BAUD_RATE;
                 document.getElementById('configPrinterComPort').value = config.PRINTER_COM_PORT;
                 document.getElementById('configPrinterBaudRate').value = config.PRINTER_BAUD_RATE;
-                document.getElementById('configPcbGridX').value = config.PCB_GRID_X;
-                document.getElementById('configPcbGridY').value = config.PCB_GRID_Y;
-                document.getElementById('configPcbRows').value = config.PCB_ROWS;
-                document.getElementById('configPcbCols').value = config.PCB_COLS;
-                document.getElementById('configPcbStartX').value = config.PCB_START_X;
-                document.getElementById('configPcbStartY').value = config.PCB_START_Y;
                 document.getElementById('configPcbZUp').value = config.PCB_Z_UP;
                 document.getElementById('configPcbZDown').value = config.PCB_Z_DOWN;
+                
+                // Handle PCB_POINTS array
+                if (config.PCB_POINTS && Array.isArray(config.PCB_POINTS)) {
+                    document.getElementById('configPcbPoints').value = JSON.stringify(config.PCB_POINTS, null, 2);
+                } else {
+                    // Fallback to default PCB points if not found
+                    const defaultPoints = [
+                        {"x": 39, "y": 70},
+                        {"x": 64, "y": 70},
+                        {"x": 89, "y": 70},
+                        {"x": 114, "y": 70},
+                        {"x": 139, "y": 70},
+                        {"x": 39, "y": 175},
+                        {"x": 64, "y": 175},
+                        {"x": 89, "y": 175},
+                        {"x": 114, "y": 175},
+                        {"x": 139, "y": 175}
+                    ];
+                    document.getElementById('configPcbPoints').value = JSON.stringify(defaultPoints, null, 2);
+                }
                 
                 // Update status to show configuration is loaded
                 document.getElementById('configStatus').textContent = '(Loaded)';
                 document.getElementById('configStatus').style.color = '#28a745';
+                
+                // Generate individual PCB test buttons based on loaded configuration
+                generateIndividualPcbButtons();
                 
                 addLog('Configuration loaded', 'success', 'generalLog');
             } catch (error) {
@@ -829,14 +842,23 @@
             const baudRate = document.getElementById('configBaudRate').value;
             const printerComPort = document.getElementById('configPrinterComPort').value;
             const printerBaudRate = document.getElementById('configPrinterBaudRate').value;
-            const pcbGridX = document.getElementById('configPcbGridX').value;
-            const pcbGridY = document.getElementById('configPcbGridY').value;
-            const pcbRows = document.getElementById('configPcbRows').value;
-            const pcbCols = document.getElementById('configPcbCols').value;
-            const pcbStartX = document.getElementById('configPcbStartX').value;
-            const pcbStartY = document.getElementById('configPcbStartY').value;
             const pcbZUp = document.getElementById('configPcbZUp').value;
             const pcbZDown = document.getElementById('configPcbZDown').value;
+            
+            // Parse PCB_POINTS from textarea
+            let pcbPoints = [];
+            try {
+                const pcbPointsText = document.getElementById('configPcbPoints').value.trim();
+                if (pcbPointsText) {
+                    pcbPoints = JSON.parse(pcbPointsText);
+                    if (!Array.isArray(pcbPoints)) {
+                        throw new Error('PCB_POINTS must be an array');
+                    }
+                }
+            } catch (error) {
+                addLog(`Invalid PCB_POINTS format: ${error.message}`, 'error', 'errorLog');
+                return;
+            }
             
             if (!comPort) {
                 addLog('Please select a COM port', 'error', 'errorLog');
@@ -857,12 +879,7 @@
                         baudRate,
                         printerComPort,
                         printerBaudRate,
-                        pcbGridX,
-                        pcbGridY,
-                        pcbRows,
-                        pcbCols,
-                        pcbStartX,
-                        pcbStartY,
+                        pcbPoints,
                         pcbZUp,
                         pcbZDown
                     })
@@ -876,6 +893,9 @@
                     // Update status and collapse panel
                     document.getElementById('configStatus').textContent = '(Saved)';
                     document.getElementById('configStatus').style.color = '#28a745';
+                    
+                    // Regenerate individual PCB test buttons with new configuration
+                    generateIndividualPcbButtons();
                     
                     // Collapse the configuration panel after a short delay
                     setTimeout(() => {
@@ -1365,6 +1385,74 @@
             } finally {
                 isProcessing = false;
                 setButtonLoading('testMovementBtn', false);
+            }
+        }
+
+        // Generate individual PCB test buttons
+        function generateIndividualPcbButtons() {
+            const container = document.getElementById('individualPcbButtons');
+            container.innerHTML = '';
+            
+            // Get the number of PCB points from configuration
+            let totalPoints = 10; // Default to 10 points
+            
+            // Check if we have PCB_POINTS in the loaded configuration
+            const pcbPointsInput = document.getElementById('configPcbPoints');
+            if (pcbPointsInput && pcbPointsInput.value) {
+                try {
+                    const pcbPoints = JSON.parse(pcbPointsInput.value);
+                    totalPoints = pcbPoints.length;
+                } catch (e) {
+                    console.error('Failed to parse PCB_POINTS:', e);
+                    totalPoints = 10; // Default fallback
+                }
+            }
+            
+            for (let i = 0; i < totalPoints; i++) {
+                const button = document.createElement('button');
+                button.className = 'btn btn-control btn-sm';
+                button.style.cssText = 'padding: 8px 4px; font-size: 0.8rem; min-height: auto;';
+                button.innerHTML = `PCB ${i + 1}`;
+                button.onclick = () => testIndividualPcbPoint(i);
+                button.id = `testPcbBtn${i}`;
+                
+                container.appendChild(button);
+            }
+        }
+
+        // Test individual PCB point
+        async function testIndividualPcbPoint(pointIndex) {
+            if (isProcessing) return;
+            
+            isProcessing = true;
+            const buttonId = `testPcbBtn${pointIndex}`;
+            setButtonLoading(buttonId, true);
+            addLog(`Starting individual PCB test for Point ${pointIndex + 1}...`, 'info', 'printerLog');
+            
+            try {
+                const response = await fetch('/api/printer/test-individual-point', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        pointIndex: pointIndex
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    addLog(`Individual PCB test started for Point ${pointIndex + 1}!`, 'success', 'printerLog');
+                    addLog(`The printer will move to PCB Point ${pointIndex + 1} with simulated programming.`, 'info', 'printerLog');
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                addLog(`Individual PCB test failed: ${error.message}`, 'error', 'errorLog');
+            } finally {
+                isProcessing = false;
+                setButtonLoading(buttonId, false);
             }
         }
 

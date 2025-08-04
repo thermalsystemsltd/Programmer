@@ -5,14 +5,20 @@
   "SERIAL_LINE_NUMBER": 137,
   "COM_PORT": "/dev/ttyUSB0",
   "BAUD_RATE": "115200",
-  "PRINTER_COM_PORT": "/dev/ttyUSB1",
+  "PRINTER_COM_PORT": "COM6",
   "PRINTER_BAUD_RATE": "115200",
-  "PCB_GRID_X": 30,
-  "PCB_GRID_Y": 110,
-  "PCB_ROWS": 2,
-  "PCB_COLS": 5,
-  "PCB_START_X": 0,
-  "PCB_START_Y": 0,
+  "PCB_POINTS": [
+    {"x": 39, "y": 70},
+    {"x": 64, "y": 70},
+    {"x": 89, "y": 70},
+    {"x": 114, "y": 70},
+    {"x": 139, "y": 70},
+    {"x": 39, "y": 175},
+    {"x": 64, "y": 175},
+    {"x": 89, "y": 175},
+    {"x": 114, "y": 175},
+    {"x": 139, "y": 175}
+  ],
   "PCB_Z_UP": 20,
   "PCB_Z_DOWN": 5
 } 
