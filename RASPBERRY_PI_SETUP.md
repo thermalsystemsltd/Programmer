@@ -41,7 +41,7 @@ The TS1 Sensor Programmer is **specifically designed** to run on Raspberry Pi fo
 ```bash
 # Download Raspberry Pi Imager
 # Flash Raspberry Pi OS (32-bit) with desktop
-# Enable SSH during setup
+# Enable SSH during setup - adad
 ```
 
 **Option B: Lite Version (headless)**
