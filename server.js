@@ -452,6 +452,12 @@ function saveConfig(config) {
 // Get current configuration
 let currentConfig = loadConfig();
 
+// Function to reload configuration from file
+function reloadConfig() {
+    currentConfig = loadConfig();
+    console.log('Configuration reloaded from file');
+}
+
 // Function to make HTTPS request
 function fetchLastSerialNumber() {
     return new Promise((resolve, reject) => {
@@ -817,6 +823,9 @@ async function programPCBGrid() {
 // Function to test printer movement without programming
 async function testPrinterMovement() {
     return new Promise(async (resolve, reject) => {
+        // Reload configuration to ensure we have the latest PCB points
+        reloadConfig();
+        
         try {
             let printerConnected = false;
             
@@ -977,6 +986,9 @@ async function testPrinterMovement() {
 // Function to test individual PCB point
 async function testIndividualPCBPoint(pointIndex) {
     return new Promise(async (resolve, reject) => {
+        // Reload configuration to ensure we have the latest PCB points
+        reloadConfig();
+        
         try {
             let printerConnected = false;
             
@@ -1113,6 +1125,9 @@ async function programIndividualPCBPoint(pointIndex) {
     return new Promise(async (resolve, reject) => {
         let printerConnected = false;
         let wasAlreadyConnected = false;
+        
+        // Reload configuration to ensure we have the latest PCB points
+        reloadConfig();
         
         try {
             // Check if printer is already connected

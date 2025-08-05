@@ -824,9 +824,9 @@
         }
 
         // Initialize the interface
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             connectToLogs();
-            loadConfiguration();
+            await loadConfiguration();
             loadConnectedDevices();
             
             // Initial position update
@@ -899,7 +899,7 @@
                 
                 // Generate individual PCB test buttons based on loaded configuration
                 generateIndividualPcbButtons();
-                generateIndividualPcbProgrammingButtons();
+                await generateIndividualPcbProgrammingButtons();
                 
                 addLog('Configuration loaded', 'success', 'generalLog');
             } catch (error) {
@@ -987,7 +987,7 @@
                     
                     // Regenerate individual PCB test buttons with new configuration
                     generateIndividualPcbButtons();
-                    generateIndividualPcbProgrammingButtons();
+                    await generateIndividualPcbProgrammingButtons();
                     
                     // Collapse the configuration panel after a short delay
                     setTimeout(() => {
@@ -1528,23 +1528,26 @@
         }
         
         // Generate individual PCB programming buttons
-        function generateIndividualPcbProgrammingButtons() {
+        async function generateIndividualPcbProgrammingButtons() {
             const container = document.getElementById('individualPcbProgrammingButtons');
             container.innerHTML = '';
             
-            // Get the number of PCB points from configuration
+            // Get the number of PCB points from server configuration
             let totalPoints = 10; // Default to 10 points
             
-            // Check if we have PCB_POINTS in the loaded configuration
-            const pcbPointsInput = document.getElementById('configPcbPoints');
-            if (pcbPointsInput && pcbPointsInput.value) {
-                try {
-                    const pcbPoints = JSON.parse(pcbPointsInput.value);
-                    totalPoints = pcbPoints.length;
-                } catch (e) {
-                    console.error('Failed to parse PCB_POINTS:', e);
-                    totalPoints = 10; // Default fallback
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                
+                if (config.PCB_POINTS && Array.isArray(config.PCB_POINTS)) {
+                    totalPoints = config.PCB_POINTS.length;
+                    console.log(`Generating ${totalPoints} programming buttons based on server config`);
+                } else {
+                    console.warn('PCB_POINTS not found in server config, using default 10 points');
                 }
+            } catch (error) {
+                console.error('Failed to get config from server:', error);
+                console.log('Using default 10 points for programming buttons');
             }
             
             for (let i = 0; i < totalPoints; i++) {
@@ -1750,13 +1753,13 @@
         }
 
         // Update PCB points display in configuration
-        function updatePcbPointsDisplay() {
+        async function updatePcbPointsDisplay() {
             // This function will be called after saving a location to refresh the display
             console.log('🔄 Updating PCB points display...');
-            loadConfiguration();
+            await loadConfiguration();
             // Also regenerate the individual PCB buttons
             generateIndividualPcbButtons();
-            generateIndividualPcbProgrammingButtons();
+            await generateIndividualPcbProgrammingButtons();
         }
 
         // Toggle log expansion
