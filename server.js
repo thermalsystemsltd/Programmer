@@ -1236,25 +1236,49 @@ async function programIndividualPCBPoint(pointIndex) {
                 throw error; // Re-throw to stop the process
             }
             
-            // Raise Z back to safe height (if printer connected)
+            // Raise Z back to safe height FIRST (before any XY movement) - exactly like test function
             if (printerConnected) {
                 // Check if printer is still connected before trying to move
                 printerConnected = await ensurePrinterConnection();
                 
                 if (printerConnected) {
-                    sendLogToClients({ type: 'info', message: `⬆️ Raising to safe height Z${currentConfig.PCB_Z_UP}` });
+                    sendLogToClients({ type: 'info', message: `⬆️ Raising Z to safe height Z${currentConfig.PCB_Z_UP} (explicit Z-only movement)...` });
                     await printerController.moveZOnly(currentConfig.PCB_Z_UP);
                     await printerController.waitForMovement();
+                    
+                    // Additional wait to ensure Z movement completes (exactly like test function)
+                    sendLogToClients({ type: 'info', message: `⏳ Waiting for Z movement to complete...` });
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    // Verify Z height before moving home (exactly like test function)
+                    try {
+                        const currentPos = await printerController.getPosition();
+                        sendLogToClients({ type: 'info', message: `📍 Current position before home: X${currentPos.x} Y${currentPos.y} Z${currentPos.z}` });
+                        
+                        if (Math.abs(currentPos.z - currentConfig.PCB_Z_UP) > 1) {
+                            sendLogToClients({ type: 'warning', message: `⚠️ Z height mismatch! Expected Z${currentConfig.PCB_Z_UP}, but printer reports Z${currentPos.z}` });
+                            // Force Z to safe height before moving home
+                            sendLogToClients({ type: 'info', message: `🔄 Forcing Z to safe height Z${currentConfig.PCB_Z_UP}...` });
+                            await printerController.moveZOnly(currentConfig.PCB_Z_UP);
+                            await printerController.waitForMovement();
+                            // Wait again after forced correction
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                        } else {
+                            sendLogToClients({ type: 'success', message: `✅ Z height verified at Z${currentPos.z} (within 1mm of target Z${currentConfig.PCB_Z_UP})` });
+                        }
+                    } catch (posError) {
+                        sendLogToClients({ type: 'warning', message: `⚠️ Could not verify position: ${posError.message}` });
+                    }
                 }
             }
             
-            // Return to home position (if printer connected)
+            // Now go home while maintaining safe Z height (exactly like test function)
             if (printerConnected) {
                 // Check if printer is still connected before trying to move
                 printerConnected = await ensurePrinterConnection();
                 
                 if (printerConnected) {
-                    sendLogToClients({ type: 'info', message: '🏠 Returning to home position...' });
+                    sendLogToClients({ type: 'info', message: `🏠 Moving home while maintaining safe Z height Z${currentConfig.PCB_Z_UP}...` });
                     await printerController.moveTo(0, 0, currentConfig.PCB_Z_UP);
                     await printerController.waitForMovement();
                 }
