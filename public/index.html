@@ -716,6 +716,19 @@
                             Test individual PCB points or save current position to PCB location
                         </p>
                     </div>
+                    
+                    <!-- Individual PCB Programming Buttons -->
+                    <div style="margin-bottom: 15px;">
+                        <h4 style="margin-bottom: 10px; color: #2c3e50; text-align: center;">
+                            <i class="fas fa-microchip"></i> Individual PCB Programming Buttons
+                        </h4>
+                        <div id="individualPcbProgrammingButtons" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;">
+                            <!-- Buttons will be generated dynamically -->
+                        </div>
+                        <p style="font-size: 0.8rem; color: #666; margin-top: 5px; text-align: center;">
+                            Program individual PCB points (actual programming, not mock)
+                        </p>
+                    </div>
                 </div>
             </div>
 
@@ -886,6 +899,7 @@
                 
                 // Generate individual PCB test buttons based on loaded configuration
                 generateIndividualPcbButtons();
+                generateIndividualPcbProgrammingButtons();
                 
                 addLog('Configuration loaded', 'success', 'generalLog');
             } catch (error) {
@@ -973,6 +987,7 @@
                     
                     // Regenerate individual PCB test buttons with new configuration
                     generateIndividualPcbButtons();
+                    generateIndividualPcbProgrammingButtons();
                     
                     // Collapse the configuration panel after a short delay
                     setTimeout(() => {
@@ -1511,6 +1526,39 @@
                 container.appendChild(pcbContainer);
             }
         }
+        
+        // Generate individual PCB programming buttons
+        function generateIndividualPcbProgrammingButtons() {
+            const container = document.getElementById('individualPcbProgrammingButtons');
+            container.innerHTML = '';
+            
+            // Get the number of PCB points from configuration
+            let totalPoints = 10; // Default to 10 points
+            
+            // Check if we have PCB_POINTS in the loaded configuration
+            const pcbPointsInput = document.getElementById('configPcbPoints');
+            if (pcbPointsInput && pcbPointsInput.value) {
+                try {
+                    const pcbPoints = JSON.parse(pcbPointsInput.value);
+                    totalPoints = pcbPoints.length;
+                } catch (e) {
+                    console.error('Failed to parse PCB_POINTS:', e);
+                    totalPoints = 10; // Default fallback
+                }
+            }
+            
+            for (let i = 0; i < totalPoints; i++) {
+                // Programming button
+                const programButton = document.createElement('button');
+                programButton.className = 'btn btn-control btn-sm';
+                programButton.style.cssText = 'padding: 8px 4px; font-size: 0.7rem; min-height: auto; background: #dc3545; color: white; font-weight: bold;';
+                programButton.innerHTML = `Program ${i + 1}`;
+                programButton.onclick = () => programIndividualPcbPoint(i);
+                programButton.id = `programPcbBtn${i}`;
+                
+                container.appendChild(programButton);
+            }
+        }
 
         // Test individual PCB point
         async function testIndividualPcbPoint(pointIndex) {
@@ -1542,6 +1590,42 @@
                 }
             } catch (error) {
                 addLog(`Individual PCB test failed: ${error.message}`, 'error', 'errorLog');
+            } finally {
+                isProcessing = false;
+                setButtonLoading(buttonId, false);
+            }
+        }
+        
+        // Program individual PCB point
+        async function programIndividualPcbPoint(pointIndex) {
+            if (isProcessing) return;
+            
+            isProcessing = true;
+            const buttonId = `programPcbBtn${pointIndex}`;
+            setButtonLoading(buttonId, true);
+            addLog(`Starting individual PCB programming for Point ${pointIndex + 1}...`, 'info', 'programmingLog');
+            
+            try {
+                const response = await fetch('/api/printer/program-individual-point', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        pointIndex: pointIndex
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    addLog(`Individual PCB programming started for Point ${pointIndex + 1}!`, 'success', 'programmingLog');
+                    addLog(`The printer will move to PCB Point ${pointIndex + 1} and perform actual programming.`, 'info', 'programmingLog');
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                addLog(`Individual PCB programming failed: ${error.message}`, 'error', 'errorLog');
             } finally {
                 isProcessing = false;
                 setButtonLoading(buttonId, false);
@@ -1672,6 +1756,7 @@
             loadConfiguration();
             // Also regenerate the individual PCB buttons
             generateIndividualPcbButtons();
+            generateIndividualPcbProgrammingButtons();
         }
 
         // Toggle log expansion

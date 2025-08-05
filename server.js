@@ -1108,6 +1108,161 @@ async function testIndividualPCBPoint(pointIndex) {
     });
 }
 
+// Function to program individual PCB point
+async function programIndividualPCBPoint(pointIndex) {
+    return new Promise(async (resolve, reject) => {
+        let printerConnected = false;
+        let wasAlreadyConnected = false;
+        
+        try {
+            // Check if printer is already connected
+            if (printerController.isConnected) {
+                wasAlreadyConnected = true;
+                printerConnected = true;
+                sendLogToClients({ type: 'info', message: '✅ Using existing printer connection for individual PCB programming...' });
+            } else {
+                // Try to connect to 3D printer
+                sendLogToClients({ type: 'info', message: '🔌 Attempting to connect to 3D printer for individual PCB programming...' });
+                try {
+                    await printerController.connect(currentConfig.PRINTER_COM_PORT, currentConfig.PRINTER_BAUD_RATE);
+                    printerConnected = true;
+                    
+                    // Home the printer
+                    sendLogToClients({ type: 'info', message: '🏠 Homing 3D printer...' });
+                    await printerController.home();
+                    await printerController.waitForMovement();
+                    
+                    // Move to safe Z height
+                    sendLogToClients({ type: 'info', message: `⬆️ Moving to safe Z height: ${currentConfig.PCB_Z_UP}mm` });
+                    await printerController.moveTo(0, 0, currentConfig.PCB_Z_UP);
+                    await printerController.waitForMovement();
+                } catch (printerError) {
+                    sendLogToClients({ type: 'warning', message: `⚠️ 3D Printer not available: ${printerError.message}` });
+                    sendLogToClients({ type: 'info', message: '🔄 Continuing with programming only (no printer movement)' });
+                }
+            }
+            
+            // Get PCB point coordinates
+            if (!currentConfig.PCB_POINTS || !currentConfig.PCB_POINTS[pointIndex]) {
+                throw new Error(`PCB Point ${pointIndex + 1} not found in configuration`);
+            }
+            
+            const point = currentConfig.PCB_POINTS[pointIndex];
+            const x = point.x;
+            const y = point.y;
+            
+            sendLogToClients({ type: 'info', message: `🎯 Starting individual PCB programming for Point ${pointIndex + 1} (index ${pointIndex}) at X${x} Y${y}` });
+            
+            // Add a delay before starting to ensure everything is stable
+            sendLogToClients({ type: 'info', message: `⏳ Stabilizing system before starting PCB programming...` });
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Move to PCB position at safe Z height (if printer connected)
+            if (printerConnected) {
+                // Check if printer is still connected before movement
+                if (!printerController.isConnected) {
+                    sendLogToClients({ type: 'warning', message: `⚠️ Printer connection lost before movement, attempting to reconnect...` });
+                    printerConnected = await ensurePrinterConnection();
+                    if (!printerConnected) {
+                        sendLogToClients({ type: 'info', message: `🎯 Programming PCB Point ${pointIndex + 1} (no printer movement - connection lost)` });
+                        // Continue with programming only
+                    }
+                }
+                
+                if (printerConnected) {
+                    sendLogToClients({ type: 'info', message: `📍 Moving to PCB position X${x} Y${y} Z${currentConfig.PCB_Z_UP}` });
+                    await printerController.moveTo(x, y, currentConfig.PCB_Z_UP);
+                    await printerController.waitForMovement();
+                
+                    // Small delay to ensure stable position
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                    // Lower Z to programming height
+                    sendLogToClients({ type: 'info', message: `⬇️ Lowering to programming height Z${currentConfig.PCB_Z_DOWN}` });
+                    await printerController.moveZOnly(currentConfig.PCB_Z_DOWN);
+                    await printerController.waitForMovement();
+                    
+                    // Small delay to ensure stable contact
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+            } else {
+                sendLogToClients({ type: 'info', message: `🎯 Programming PCB Point ${pointIndex + 1} (no printer movement)` });
+                // Small delay for programming
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+            
+            // Program the PCB
+            try {
+                // Add a small delay before programming to ensure printer connection is stable
+                if (printerConnected) {
+                    sendLogToClients({ type: 'info', message: `⏳ Stabilizing printer connection before programming...` });
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                    // Double-check printer connection before programming
+                    if (!printerController.isConnected) {
+                        sendLogToClients({ type: 'warning', message: `⚠️ Printer connection lost before programming, attempting to reconnect...` });
+                        printerConnected = await ensurePrinterConnection();
+                        if (!printerConnected) {
+                            sendLogToClients({ type: 'warning', message: `⚠️ Continuing with programming only (printer reconnection failed)` });
+                        }
+                    }
+                }
+                
+                const result = await programESP8266();
+                sendLogToClients({ type: 'success', message: `✅ PCB Point ${pointIndex + 1} programmed successfully!` });
+                
+                // Add a small delay after programming to ensure printer connection is stable
+                if (printerConnected) {
+                    sendLogToClients({ type: 'info', message: `⏳ Stabilizing printer connection after programming...` });
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            } catch (error) {
+                sendLogToClients({ type: 'error', message: `❌ PCB Point ${pointIndex + 1} failed: ${error.message}` });
+                throw error; // Re-throw to stop the process
+            }
+            
+            // Raise Z back to safe height (if printer connected)
+            if (printerConnected) {
+                // Check if printer is still connected before trying to move
+                printerConnected = await ensurePrinterConnection();
+                
+                if (printerConnected) {
+                    sendLogToClients({ type: 'info', message: `⬆️ Raising to safe height Z${currentConfig.PCB_Z_UP}` });
+                    await printerController.moveZOnly(currentConfig.PCB_Z_UP);
+                    await printerController.waitForMovement();
+                }
+            }
+            
+            // Return to home position (if printer connected)
+            if (printerConnected) {
+                // Check if printer is still connected before trying to move
+                printerConnected = await ensurePrinterConnection();
+                
+                if (printerConnected) {
+                    sendLogToClients({ type: 'info', message: '🏠 Returning to home position...' });
+                    await printerController.moveTo(0, 0, currentConfig.PCB_Z_UP);
+                    await printerController.waitForMovement();
+                }
+            }
+            
+            sendLogToClients({ type: 'big-success', message: `🎉 Individual PCB Programming Complete! Point ${pointIndex + 1} at X${x} Y${y}` });
+            resolve();
+            
+        } catch (error) {
+            sendLogToClients({ type: 'error', message: `❌ Individual PCB Programming failed: ${error.message}` });
+            reject(error);
+        } finally {
+            // Don't disconnect if we were already connected before
+            if (printerConnected && !wasAlreadyConnected) {
+                sendLogToClients({ type: 'info', message: '🔌 Disconnecting printer after individual programming (was connected for programming only)' });
+                await printerController.disconnect();
+            } else if (wasAlreadyConnected) {
+                sendLogToClients({ type: 'info', message: '✅ Keeping printer connected (was already connected)' });
+            }
+        }
+    });
+}
+
 // Function to check and restore printer connection
 async function ensurePrinterConnection() {
     if (!printerController.isConnected) {
@@ -1724,6 +1879,28 @@ app.post('/api/printer/test-individual-point', async (req, res) => {
         res.json({
             success: true,
             message: `Individual PCB point test started for point index ${pointIndex}`
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+app.post('/api/printer/program-individual-point', async (req, res) => {
+    try {
+        const { pointIndex } = req.body;
+        if (pointIndex === undefined || pointIndex < 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'Point index is required and must be a non-negative integer'
+            });
+        }
+        await programIndividualPCBPoint(pointIndex);
+        res.json({
+            success: true,
+            message: `Individual PCB point programming started for point index ${pointIndex}`
         });
     } catch (error) {
         res.status(500).json({
