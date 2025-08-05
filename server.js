@@ -1130,31 +1130,38 @@ async function programIndividualPCBPoint(pointIndex) {
         reloadConfig();
         
         try {
-            // Check if printer is already connected
-            if (printerController.isConnected) {
-                wasAlreadyConnected = true;
-                printerConnected = true;
+            // Check if already connected
+            let wasAlreadyConnected = printerController.isConnected;
+            if (wasAlreadyConnected) {
                 sendLogToClients({ type: 'info', message: '✅ Using existing printer connection for individual PCB programming...' });
+                printerConnected = true;
             } else {
                 // Try to connect to 3D printer
                 sendLogToClients({ type: 'info', message: '🔌 Attempting to connect to 3D printer for individual PCB programming...' });
+                
                 try {
                     await printerController.connect(currentConfig.PRINTER_COM_PORT, currentConfig.PRINTER_BAUD_RATE);
                     printerConnected = true;
-                    
-                    // Home the printer
-                    sendLogToClients({ type: 'info', message: '🏠 Homing 3D printer...' });
-                    await printerController.home();
-                    await printerController.waitForMovement();
-                    
-                    // Move to safe Z height
-                    sendLogToClients({ type: 'info', message: `⬆️ Moving to safe Z height: ${currentConfig.PCB_Z_UP}mm` });
-                    await printerController.moveTo(0, 0, currentConfig.PCB_Z_UP);
-                    await printerController.waitForMovement();
                 } catch (printerError) {
                     sendLogToClients({ type: 'warning', message: `⚠️ 3D Printer not available: ${printerError.message}` });
                     sendLogToClients({ type: 'info', message: '🔄 Continuing with programming only (no printer movement)' });
                 }
+            }
+            
+            // Only home if not already homed (exactly like test function)
+            if (printerConnected && !printerController.isHomed) {
+                sendLogToClients({ type: 'info', message: '🏠 Homing 3D printer...' });
+                await printerController.home();
+                await printerController.waitForMovement();
+            } else if (printerConnected) {
+                sendLogToClients({ type: 'info', message: '✅ Printer already homed, skipping home command...' });
+            }
+            
+            // Move to safe Z height (if printer connected)
+            if (printerConnected) {
+                sendLogToClients({ type: 'info', message: `⬆️ Moving to safe Z height: ${currentConfig.PCB_Z_UP}mm` });
+                await printerController.moveTo(0, 0, currentConfig.PCB_Z_UP);
+                await printerController.waitForMovement();
             }
             
             // Get PCB point coordinates
