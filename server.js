@@ -986,14 +986,16 @@ async function testPrinterMovement() {
 // Function to test individual PCB point
 async function testIndividualPCBPoint(pointIndex) {
     return new Promise(async (resolve, reject) => {
+        let printerConnected = false;
+        let wasAlreadyConnected = false;
+        
         // Reload configuration to ensure we have the latest PCB points
         reloadConfig();
         
         try {
-            let printerConnected = false;
             
             // Check if already connected
-            let wasAlreadyConnected = printerController.isConnected;
+            wasAlreadyConnected = printerController.isConnected;
             if (wasAlreadyConnected) {
                 sendLogToClients({ type: 'info', message: '✅ Using existing printer connection for individual PCB test...' });
                 printerConnected = true;
